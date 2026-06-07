@@ -1,0 +1,43 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  theme-stress:
+    name: Theme Stress Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate theme-stress fixtures
+        run: go run ./tools/devtool generate -- --config matrix.theme-stress.config.json
+      - name: Run theme-stress golden tests
+        run: go test ./internal/fidelity/ -run TestGoldenFidelityThemeStress -v -count=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: theme-stress-results
+          path: internal/fidelity/testdata/golden-theme-stress/
+
+  fuzz:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Fuzz ParseGrammar
+        run: go test -fuzz=FuzzParseGrammar ./internal/tokenizer/ -fuzztime=5m
+      - name: Fuzz Tokenize
+        run: go test -fuzz=FuzzTokenize ./internal/tokenizer/ -fuzztime=5m

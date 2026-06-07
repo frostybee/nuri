@@ -1,0 +1,8 @@
+package nuri
+
+import "github.com/frostybee/nuri/internal/registry"
+
+var (
+	ErrLanguageNotFound = registry.ErrLanguageNotFound
+	ErrThemeNotFound    = registry.ErrThemeNotFound
+)

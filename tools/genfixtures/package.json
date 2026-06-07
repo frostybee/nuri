@@ -1,0 +1,12 @@
+{
+  "name": "nuri-genfixtures",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generate fidelity test fixtures from vscode-textmate",
+  "scripts": {
+    "generate": "node generate.mjs",
+    "test": "node --test utf16_test.mjs"
+  },
+  "dependencies": {}
+}

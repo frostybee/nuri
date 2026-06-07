@@ -1,0 +1,34 @@
+name: Full Fidelity Gate
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  full-fidelity:
+    name: Full Matrix Fidelity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate full fixtures
+        run: go run ./tools/devtool generate -- --config matrix.full.config.json
+      - name: Run full golden tests
+        run: go test ./internal/fidelity/ -run "TestGoldenFidelityFull|TestCoreOnlyShipsGreen" -v -count=1
+      - name: Update FIDELITY.md
+        run: go test ./internal/fidelity/ -run TestFidelityReport -v -count=1 -args -update
+      - name: Commit FIDELITY.md if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add FIDELITY.md
+          git diff --cached --quiet || git commit -m "chore: update FIDELITY.md [skip ci]"
+          git push || true

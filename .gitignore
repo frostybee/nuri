@@ -1,3 +1,9 @@
+my-docs/
+poc/
+
+*.png
+*.txt
+
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
@@ -27,6 +33,19 @@ go.work.sum
 # env file
 .env
 
+# Generated demo output
+cmd/demo/output.html
+
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Fixture generator dependencies
+tools/genfixtures/node_modules/
+
+# Cloned sample sources (no longer used — now a git submodule as grammars-themes/)
+# textmate-grammars-themes/
+
+# CI-only fixture directories (generated on-the-fly, not committed)
+internal/fidelity/testdata/golden-full/
+internal/fidelity/testdata/golden-theme-stress/

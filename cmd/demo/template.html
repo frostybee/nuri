@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuri — Feature Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+  :root {
+    --page-bg: #020110;
+    --page-fg: #f0f3f6;
+    --card-bg: #151b23;
+    --card-border: #272b33;
+    --header-bg: #020110;
+    --muted: #9198a1;
+    --accent: #71b7ff;
+    --highlight-bg: rgba(187, 128, 9, 0.15);
+    --diff-add-bg: rgba(46, 160, 67, 0.15);
+    --diff-add-gutter: #3fb950;
+    --diff-remove-bg: rgba(248, 81, 73, 0.15);
+    --diff-remove-gutter: #f85149;
+    --code-bg: #272a32;
+    --dimmed-opacity: 0.32;
+  }
+
+  html[data-theme="light"] {
+    --page-bg: #ffffff;
+    --page-fg: #1f2328;
+    --card-bg: #f6f8fa;
+    --card-border: #d0d7de;
+    --header-bg: #f6f8fa;
+    --muted: #656d76;
+    --accent: #0969da;
+    --highlight-bg: rgba(187, 128, 9, 0.12);
+    --diff-add-bg: rgba(46, 160, 67, 0.10);
+    --diff-add-gutter: #1a7f37;
+    --diff-remove-bg: rgba(248, 81, 73, 0.10);
+    --diff-remove-gutter: #cf222e;
+    --code-bg: #f6f7f9;
+    --dimmed-opacity: 0.35;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    line-height: 1.6;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--card-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  header h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-top: 0.15rem;
+  }
+
+  .theme-toggle {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--page-fg);
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+  .theme-toggle:hover { background: var(--card-border); }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--accent);
+  }
+
+  .section .desc {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .block-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+    margin-top: 0.75rem;
+  }
+
+  pre.shiki {
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    background-color: var(--code-bg) !important;
+  }
+
+  /* Multi-theme: swap colors/bg via CSS variables when toggled */
+  html[data-theme="light"] pre.shiki.nuri-themes {
+    background-color: var(--code-bg) !important;
+    color: var(--nuri-light) !important;
+  }
+  html[data-theme="light"] pre.shiki.nuri-themes span[style],
+  html[data-theme="light"] pre.shiki.nuri-themes span[class] {
+    color: var(--nuri-light) !important;
+  }
+
+  /* Decorations */
+  .line.highlighted {
+    display: inline-block;
+    width: 100%;
+    background: var(--highlight-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+
+  .line.diff.add {
+    display: inline-block;
+    width: 100%;
+    background: var(--diff-add-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+  .line.diff.add::before {
+    content: "+ ";
+    color: var(--diff-add-gutter);
+    font-weight: 700;
+  }
+
+  .line.diff.remove {
+    display: inline-block;
+    width: 100%;
+    background: var(--diff-remove-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+  .line.diff.remove::before {
+    content: "- ";
+    color: var(--diff-remove-gutter);
+    font-weight: 700;
+  }
+
+  pre.has-focused .line.dimmed {
+    opacity: var(--dimmed-opacity);
+    transition: opacity 0.15s;
+  }
+  pre.has-focused:hover .line.dimmed {
+    opacity: 0.8;
+  }
+  .line.focused {
+    display: inline-block;
+    width: 100%;
+    background: var(--highlight-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+
+  /* StyleClassMap extracted CSS */
+  pre.css-dump {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--muted);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--card-border);
+  }
+
+  {{- range .Sections}}
+  {{- if .ExtraCSS}}
+  /* StyleClassMap CSS for section {{.ID}} */
+  {{.ExtraCSS}}
+  {{- end}}
+  {{- end}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Nuri — Feature Demo</h1>
+    <p>TextMate-based syntax highlighting for Go</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()">&#9788; Light</button>
+</header>
+
+<main>
+{{- range .Sections}}
+  <div class="section">
+    <h2>{{.ID}}. {{.Title}}</h2>
+    <p class="desc">{{.Description}}</p>
+    {{- range .Blocks}}
+    {{- if .Label}}<div class="block-label">{{.Label}}</div>{{end}}
+    {{.HTML}}
+    {{- end}}
+    {{- if .ExtraHTML}}
+    <div class="block-label">Extracted CSS</div>
+    {{.ExtraHTML}}
+    {{- end}}
+  </div>
+{{- end}}
+</main>
+
+<footer>Generated by Nuri demo &mdash; {{.Generated}}</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.theme-toggle');
+  if (html.dataset.theme === 'dark') {
+    html.dataset.theme = 'light';
+    btn.innerHTML = '&#9790; Dark';
+  } else {
+    html.dataset.theme = 'dark';
+    btn.innerHTML = '&#9788; Light';
+  }
+}
+</script>
+</body>
+</html>
