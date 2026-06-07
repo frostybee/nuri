@@ -24,9 +24,16 @@ func tokenizeLine(
 	lineLen := len(line)
 	anchorPosition := -1
 
+	// vscode-textmate appends "\n" to every line before tokenizing
+	// (grammar.ts:380). Lookaheads like (?!\s) in end patterns rely on
+	// a character after the line's real \n — without it the lookahead
+	// vacuously succeeds at end-of-string. scanLine is used for regex
+	// matching only; token production stays within the original line.
+	scanLine := append(line[:len(line):len(line)], '\n')
+
 	cc := &captureContext{
 		ctx:        ctx,
-		line:       line,
+		line:       scanLine,
 		g:          g,
 		onigLib:    onigLib,
 		resolver:   resolver,
@@ -77,23 +84,35 @@ loop:
 		}
 
 		searchOpts := computeSearchOptions(isFirstLine, pos, anchorPosition)
-		mr, err := findNextMatch(ctx, onigLib, compiled, line, pos, cache, searchOpts)
+		mr, err := findNextMatch(ctx, onigLib, compiled, scanLine, pos, cache, searchOpts)
 		if err != nil {
 			break
 		}
 
-		injMatch, injPriority, injErr := matchInjections(ctx, onigLib, injections, g, state, line, pos, resolver, cache, searchOpts)
+		injMatch, injPriority, injErr := matchInjections(ctx, onigLib, injections, g, state, scanLine, pos, resolver, cache, searchOpts)
 		if injErr != nil {
 			break
 		}
 
 		mr = pickBestMatch(mr, injMatch, injPriority)
 
-		if mr == nil {
+		if mr == nil || mr.match.Captures[0].Start >= lineLen {
 			if pos < tokenEnd {
 				builder.produce(tokenEnd, state.scopeSlice())
 			}
 			break
+		}
+
+		// Clamp capture positions to the original line boundary.
+		// The scanner operates on scanLine (with sentinel \n), but
+		// token production must stay within the real line.
+		for i := range mr.match.Captures {
+			if mr.match.Captures[i].Start > lineLen {
+				mr.match.Captures[i].Start = lineLen
+			}
+			if mr.match.Captures[i].End > lineLen {
+				mr.match.Captures[i].End = lineLen
+			}
 		}
 
 		matchStart := mr.match.Captures[0].Start
@@ -134,7 +153,7 @@ loop:
 			}
 
 		case *grammar.BeginEndRule:
-			handleBeginRule(rule, mr.match, line, state, builder, pos, cc, mr.ruleGrammar)
+			handleBeginRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar)
 			anchorPosition = matchEnd
 
 			// Check [2]: BeginEndRule pushed same rule without advancing
@@ -146,7 +165,7 @@ loop:
 			}
 
 		case *grammar.BeginWhileRule:
-			handleBeginWhileRule(rule, mr.match, line, state, builder, pos, cc, mr.ruleGrammar)
+			handleBeginWhileRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar)
 			anchorPosition = matchEnd
 
 			// Check [3]: BeginWhileRule pushed same rule without advancing
