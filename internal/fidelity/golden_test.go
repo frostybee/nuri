@@ -8,23 +8,32 @@ import (
 	"strings"
 	"testing"
 
+	"io/fs"
+
 	"github.com/frostybee/nuri"
 	"github.com/frostybee/nuri/ast"
 	"github.com/frostybee/nuri/bundle/core"
+	"github.com/frostybee/nuri/bundle/full"
 	"github.com/frostybee/nuri/internal/fidelity"
 	"github.com/frostybee/nuri/internal/shared"
 	"github.com/frostybee/nuri/theme"
 )
 
-const (
-	goldenDir            = "testdata/golden"
-	goldenFullDir        = "testdata/golden-full"
-	goldenThemeStressDir = "testdata/golden-theme-stress"
+var (
+	goldenDir            = shared.FixtureGoldenDir
+	goldenFullDir        = shared.FixtureGoldenFullDir
+	goldenThemeStressDir = shared.FixtureGoldenThemeStressDir
+	goldenAllDir         = shared.FixtureGoldenAllDir
 )
 
-// runGoldenSuite loads fixtures from dir, runs nuri over each, and compares.
-// Returns the fidelity report and list of themes found.
+// runGoldenSuite loads fixtures from dir using core.FS(), runs nuri over each, and compares.
 func runGoldenSuite(t *testing.T, dir string) (*fidelity.FidelityReport, []string) {
+	return runGoldenSuiteWithFS(t, dir, core.FS())
+}
+
+// runGoldenSuiteWithFS loads fixtures from dir, runs nuri over each, and compares.
+// Returns the fidelity report and list of themes found.
+func runGoldenSuiteWithFS(t *testing.T, dir string, fsys fs.FS) (*fidelity.FidelityReport, []string) {
 	t.Helper()
 
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -40,7 +49,7 @@ func runGoldenSuite(t *testing.T, dir string) (*fidelity.FidelityReport, []strin
 	}
 
 	ctx := context.Background()
-	h, err := nuri.New(ctx, nuri.WithFS(core.FS()))
+	h, err := nuri.New(ctx, nuri.WithFS(fsys))
 	if err != nil {
 		t.Fatalf("nuri.New: %v", err)
 	}
@@ -79,6 +88,10 @@ func TestGoldenFidelityFull(t *testing.T) {
 
 func TestGoldenFidelityThemeStress(t *testing.T) {
 	runGoldenSuite(t, goldenThemeStressDir)
+}
+
+func TestGoldenFidelityAll(t *testing.T) {
+	runGoldenSuiteWithFS(t, goldenAllDir, full.FS())
 }
 
 // auxiliaryGrammars are grammars included via $include from parent grammars.

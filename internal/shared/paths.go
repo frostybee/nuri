@@ -16,6 +16,22 @@ const (
 	BundleCoreThemes     = "bundle/core/themes"
 )
 
+// Fixture testdata directories (relative to internal/fidelity package).
+const (
+	FixtureGoldenDir            = "testdata/golden"
+	FixtureGoldenFullDir        = "testdata/golden-full"
+	FixtureGoldenThemeStressDir = "testdata/golden-theme-stress"
+	FixtureGoldenAllDir         = "testdata/golden-all"
+)
+
+// Fixture testdata directories (relative to repo root, for CI/tooling).
+const (
+	FixtureGoldenRepoPath            = "internal/fidelity/testdata/golden"
+	FixtureGoldenFullRepoPath        = "internal/fidelity/testdata/golden-full"
+	FixtureGoldenThemeStressRepoPath = "internal/fidelity/testdata/golden-theme-stress"
+	FixtureGoldenAllRepoPath         = "internal/fidelity/testdata/golden-all"
+)
+
 var (
 	repoRoot     string
 	repoRootOnce sync.Once

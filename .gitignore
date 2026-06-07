@@ -49,3 +49,4 @@ tools/genfixtures/node_modules/
 # CI-only fixture directories (generated on-the-fly, not committed)
 internal/fidelity/testdata/golden-full/
 internal/fidelity/testdata/golden-theme-stress/
+internal/fidelity/testdata/golden-all/
