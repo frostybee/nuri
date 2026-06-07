@@ -375,6 +375,28 @@ func TestScannerIterative(t *testing.T) {
 	}
 }
 
+func TestEmptyPatternZeroWidthMatch(t *testing.T) {
+	ctx := context.Background()
+	inst := newTestInstance(t)
+
+	scanner, err := inst.NewScanner(ctx, [][]byte{[]byte("")})
+	if err != nil {
+		t.Fatalf("NewScanner with empty pattern: %v", err)
+	}
+	defer scanner.Free(ctx)
+
+	m, err := scanner.FindNextMatch(ctx, []byte("hello"), 0, SearchOptionNone)
+	if err != nil {
+		t.Fatalf("FindNextMatch: %v", err)
+	}
+	if m == nil {
+		t.Fatal("expected a zero-width match for empty pattern")
+	}
+	if m.Captures[0].Start != 0 || m.Captures[0].End != 0 {
+		t.Errorf("expected [0:0], got [%d:%d]", m.Captures[0].Start, m.Captures[0].End)
+	}
+}
+
 func TestInvalidPattern(t *testing.T) {
 	ctx := context.Background()
 	inst := newTestInstance(t)

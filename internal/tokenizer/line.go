@@ -64,7 +64,7 @@ loop:
 			break
 		}
 
-		if endRule != nil && endRule.EndPattern != "" {
+		if endRule != nil {
 			endCR := grammar.CompiledRule{
 				Pattern: []byte(endRule.EndPattern),
 				Rule:    endRule,
