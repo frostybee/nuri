@@ -143,7 +143,7 @@ loop:
 			}
 
 		case *grammar.MatchRule:
-			handleMatchRule(rule, mr.match, state, builder, cc)
+			handleMatchRule(rule, mr.match, state, builder, cc, mr.ruleGrammar)
 
 			// Check [4]: MatchRule without advancement (vscode-textmate lines 317-328).
 			if !hasAdvanced {
@@ -217,6 +217,19 @@ func computeSearchOptions(isFirstLine bool, pos, anchorPosition int) oniguruma.S
 	return opts
 }
 
+// captureContextForGrammar returns a captureContext that uses the rule's
+// grammar for include resolution during capture retokenization. When a
+// cross-grammar rule (e.g., C# inside razor) has captures with patterns,
+// the includes must resolve against the rule's grammar, not the root grammar.
+func captureContextForGrammar(cc *captureContext, ruleGrammar *grammar.Grammar) *captureContext {
+	if ruleGrammar == nil || ruleGrammar == cc.g {
+		return cc
+	}
+	tmp := *cc
+	tmp.g = ruleGrammar
+	return &tmp
+}
+
 func resolveScopeName(name string, captures []oniguruma.Capture, line []byte) string {
 	if name == "" {
 		return name
@@ -231,6 +244,7 @@ func handleMatchRule(
 	state *StateStack,
 	builder *lineTokenBuilder,
 	cc *captureContext,
+	ruleGrammar *grammar.Grammar,
 ) {
 	scopes := state.scopeSlice()
 	if rule.Name != "" {
@@ -239,7 +253,7 @@ func handleMatchRule(
 	}
 
 	if len(rule.Captures) > 0 {
-		handleCaptures(match.Captures, rule.Captures, scopes, builder, cc)
+		handleCaptures(match.Captures, rule.Captures, scopes, builder, captureContextForGrammar(cc, ruleGrammar))
 	} else {
 		builder.produce(match.Captures[0].End, scopes)
 	}
@@ -269,7 +283,7 @@ func handleBeginRule(
 
 	// Handle begin captures
 	if len(rule.BeginCaptures) > 0 {
-		handleCaptures(match.Captures, rule.BeginCaptures, scopes, builder, cc)
+		handleCaptures(match.Captures, rule.BeginCaptures, scopes, builder, captureContextForGrammar(cc, ruleGrammar))
 	} else {
 		builder.produce(match.Captures[0].End, scopes)
 	}
@@ -303,9 +317,9 @@ func handleEndRule(
 		scopes = scopes[:len(scopes)-countScopes(top.ContentScope)]
 	}
 
-	// Handle end captures
+	// Handle end captures — use the content grammar for capture retokenization
 	if len(rule.EndCaptures) > 0 {
-		handleCaptures(match.Captures, rule.EndCaptures, scopes, builder, cc)
+		handleCaptures(match.Captures, rule.EndCaptures, scopes, builder, captureContextForGrammar(cc, top.ContentGrammar))
 	} else {
 		builder.produce(match.Captures[0].End, scopes)
 	}
@@ -334,7 +348,7 @@ func handleBeginWhileRule(
 	}
 
 	if len(rule.BeginCaptures) > 0 {
-		handleCaptures(match.Captures, rule.BeginCaptures, scopes, builder, cc)
+		handleCaptures(match.Captures, rule.BeginCaptures, scopes, builder, captureContextForGrammar(cc, ruleGrammar))
 	} else {
 		builder.produce(match.Captures[0].End, scopes)
 	}

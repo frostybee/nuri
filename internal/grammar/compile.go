@@ -63,6 +63,7 @@ func compileRule(rule Rule, g *Grammar, repo map[string]Rule, visited map[RuleID
 			result.Rules = append(result.Rules, CompiledRule{
 				Pattern: []byte(r.Match),
 				Rule:    r,
+				Grammar: g,
 			})
 		}
 
