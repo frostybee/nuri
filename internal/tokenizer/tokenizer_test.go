@@ -61,7 +61,7 @@ func TestMatchOnly(t *testing.T) {
 	g := loadMiniGrammar(t, "match_only.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("if x 42"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("if x 42"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestBeginEnd(t *testing.T) {
 	g := loadMiniGrammar(t, "begin_end.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte(`hello "world" end`), g, onigLib)
+	result, err := Tokenize(ctx, []byte(`hello "world" end`), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestEmptyInput(t *testing.T) {
 	g := loadMiniGrammar(t, "match_only.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte(""), g, onigLib)
+	result, err := Tokenize(ctx, []byte(""), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestMultiLine(t *testing.T) {
 	g := loadMiniGrammar(t, "match_only.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("if x\nreturn 42"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("if x\nreturn 42"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestRealGoGrammar(t *testing.T) {
 	}
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("package main\n"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("package main\n"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestGAnchor(t *testing.T) {
 	g := loadMiniGrammar(t, "g_anchor.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("- hello world"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("- hello world"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestBeginEndBackref(t *testing.T) {
 	g := loadMiniGrammar(t, "begin_end_backref.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte(`say "hello" and 'world'`), g, onigLib)
+	result, err := Tokenize(ctx, []byte(`say "hello" and 'world'`), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestSelfInjection(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_self.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("if x # comment"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("if x # comment"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestInjectionPriorityLeft(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_priority_left.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("hello"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("hello"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestInjectionPriorityRight(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_priority_right.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("hello"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("hello"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestInjectionNegation(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_negation.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("if 42 // 99"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("if 42 // 99"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestInjectionBeginEnd(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_begin_end.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("hello { 42 }"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("hello { 42 }"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -383,7 +383,7 @@ func TestInjectionBeginEndMultiLine(t *testing.T) {
 	g := loadMiniGrammar(t, "injection_begin_end.json")
 	onigLib := newTestOnigLib(t)
 
-	result, err := Tokenize(ctx, []byte("hello {\n42\n}"), g, onigLib)
+	result, err := Tokenize(ctx, []byte("hello {\n42\n}"), g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -396,6 +396,190 @@ func TestInjectionBeginEndMultiLine(t *testing.T) {
 	tokens := result.Lines[1]
 	dumpTokens(t, tokens)
 	assertTokenScope(t, tokens, "number.injected.test", "42")
+}
+
+// --- Safety feature tests ---
+
+func TestMaxLineLength_SkipsLongLine(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	// 3 lines: short, long (200 bytes), short
+	longLine := strings.Repeat("x", 200)
+	code := "if x\n" + longLine + "\n42"
+	result, err := Tokenize(ctx, []byte(code), g, onigLib, TokenizeOptions{MaxLineLength: 100})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Lines) != 3 {
+		t.Fatalf("lines: got %d, want 3", len(result.Lines))
+	}
+
+	// Line 0 and 2 should be tokenized normally.
+	assertTokenScope(t, result.Lines[0], "keyword.control.test", "if")
+	assertTokenScope(t, result.Lines[2], "constant.numeric.test", "42")
+
+	// Line 1 (long) should be a single unstyled token.
+	if len(result.Lines[1]) != 1 {
+		t.Fatalf("long line: got %d tokens, want 1", len(result.Lines[1]))
+	}
+	if result.Lines[1][0].End != 200 {
+		t.Errorf("long line token End: got %d, want 200", result.Lines[1][0].End)
+	}
+
+	// Should have a diagnostic.
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("diagnostics: got %d, want 1", len(result.Diagnostics))
+	}
+	if result.Diagnostics[0].Line != 1 || result.Diagnostics[0].Kind != "too_long" {
+		t.Errorf("diagnostic: got %+v, want Line=1 Kind=too_long", result.Diagnostics[0])
+	}
+}
+
+func TestMaxLineLength_MeasuresWithoutNewline(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	// Line content is 10 bytes ("xxxxxxxxxx"), splitLines re-adds \n making len=11.
+	code := strings.Repeat("x", 10) + "\n42"
+
+	// Limit=10: content is exactly 10, should NOT skip.
+	result, err := Tokenize(ctx, []byte(code), g, onigLib, TokenizeOptions{MaxLineLength: 10})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Errorf("limit=10: expected no diagnostics, got %d", len(result.Diagnostics))
+	}
+
+	// Limit=9: content exceeds, should skip.
+	result, err = Tokenize(ctx, []byte(code), g, onigLib, TokenizeOptions{MaxLineLength: 9})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Kind != "too_long" {
+		t.Errorf("limit=9: expected too_long diagnostic, got %v", result.Diagnostics)
+	}
+}
+
+func TestMaxLineLength_Zero_NoLimit(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	longLine := strings.Repeat("x", 10000)
+	result, err := Tokenize(ctx, []byte(longLine), g, onigLib, TokenizeOptions{MaxLineLength: 0})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Errorf("expected no diagnostics with MaxLineLength=0, got %d", len(result.Diagnostics))
+	}
+}
+
+func TestMaxLineLength_StatePreserved(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "begin_end.json")
+	onigLib := newTestOnigLib(t)
+
+	// Open a string on line 1, long line in the middle, close on line 3.
+	// State should carry through the skipped line.
+	longLine := strings.Repeat("x", 200)
+	code := `"hello` + "\n" + longLine + "\n" + `world"`
+	result, err := Tokenize(ctx, []byte(code), g, onigLib, TokenizeOptions{MaxLineLength: 100})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Lines) != 3 {
+		t.Fatalf("lines: got %d, want 3", len(result.Lines))
+	}
+
+	// The long line should have the string scope from the open quote.
+	if len(result.Lines[1]) != 1 {
+		t.Fatalf("long line tokens: got %d, want 1", len(result.Lines[1]))
+	}
+	scopes := result.Lines[1][0].Scopes
+	var hasString bool
+	for _, s := range scopes {
+		if strings.Contains(s, "string") {
+			hasString = true
+		}
+	}
+	if !hasString {
+		t.Errorf("long line should inherit string scope, got %v", scopes)
+	}
+}
+
+func TestTimeout_Zero_NoTimeout(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	result, err := Tokenize(ctx, []byte("if x 42"), g, onigLib, TokenizeOptions{TimeoutMs: 0})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Errorf("expected no diagnostics with TimeoutMs=0, got %d", len(result.Diagnostics))
+	}
+	assertTokenScope(t, result.Lines[0], "keyword.control.test", "if")
+}
+
+func TestTimeout_FastLines_NoTimeout(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	result, err := Tokenize(ctx, []byte("if x 42\nreturn 0"), g, onigLib, TokenizeOptions{TimeoutMs: 5000})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Errorf("expected no timeout diagnostics for fast lines, got %d", len(result.Diagnostics))
+	}
+}
+
+func TestPanicRecovery_ContinuesAfterPanic(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	// Set up a hook to panic on line 1 (second line).
+	panicOnLineHook = 1
+	defer func() { panicOnLineHook = -1 }()
+
+	code := "if x\npanic_line\n42"
+	result, err := Tokenize(ctx, []byte(code), g, onigLib, TokenizeOptions{})
+	if err != nil {
+		t.Fatalf("Tokenize: %v", err)
+	}
+
+	// All 3 lines should be present.
+	if len(result.Lines) != 3 {
+		t.Fatalf("lines: got %d, want 3", len(result.Lines))
+	}
+
+	// Line 0 and 2 should be tokenized normally.
+	assertTokenScope(t, result.Lines[0], "keyword.control.test", "if")
+	assertTokenScope(t, result.Lines[2], "constant.numeric.test", "42")
+
+	// Line 1 should be a single unstyled token (panic recovery).
+	if len(result.Lines[1]) != 1 {
+		t.Fatalf("panic line: got %d tokens, want 1", len(result.Lines[1]))
+	}
+
+	// Should have a panic diagnostic.
+	var found bool
+	for _, d := range result.Diagnostics {
+		if d.Line == 1 && d.Kind == "panic" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected panic diagnostic for line 1, got %v", result.Diagnostics)
+	}
 }
 
 func assertNoTokenScope(t *testing.T, tokens []Token, scope string) {

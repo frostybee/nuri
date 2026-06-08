@@ -55,7 +55,7 @@ func FuzzTokenize(f *testing.F) {
 		ctx := context.Background()
 		onigLib := newTestOnigLib(t)
 
-		result, err := Tokenize(ctx, source, g, onigLib)
+		result, err := Tokenize(ctx, source, g, onigLib, TokenizeOptions{})
 		if err != nil {
 			return // errors are fine, panics are not
 		}

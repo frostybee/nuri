@@ -13,6 +13,9 @@ import (
 type CodeToTokensOptions struct {
 	Lang  string // language name (e.g. "go", "javascript")
 	Theme string // theme name (e.g. "github-dark")
+
+	MaxLineLength *int // nil = use highlighter default; per-line byte-length pre-filter
+	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
 }
 
 // TokenStyle holds resolved style for a single theme.
@@ -85,6 +88,9 @@ type CodeToHTMLOptions struct {
 	// ClassMap replaces inline styles with hashed class names when non-nil.
 	// The map accumulates across multiple CodeToHTML calls; call CSS() for the stylesheet.
 	ClassMap *StyleClassMap
+
+	MaxLineLength *int // nil = use highlighter default; per-line byte-length pre-filter
+	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
 }
 
 // StyleClassMap collects unique style combinations and assigns deterministic

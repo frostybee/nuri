@@ -44,10 +44,12 @@ var (
 // Highlighter is the main entry point for syntax highlighting.
 // It owns WASM resources and must be closed when no longer needed.
 type Highlighter struct {
-	eng       *oniguruma.Engine
-	pool      *oniguruma.Pool
-	reg       *registry.Registry
-	closeOnce sync.Once
+	eng           *oniguruma.Engine
+	pool          *oniguruma.Pool
+	reg           *registry.Registry
+	maxLineLength int
+	timeoutMs     int
+	closeOnce     sync.Once
 }
 
 // New compiles the WASM engine, instantiates a pool of WASM instances,
@@ -84,10 +86,26 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 	}
 
 	return &Highlighter{
-		eng:  eng,
-		pool: pool,
-		reg:  reg,
+		eng:           eng,
+		pool:          pool,
+		reg:           reg,
+		maxLineLength: cfg.maxLineLength,
+		timeoutMs:     cfg.timeoutMs,
 	}, nil
+}
+
+func (h *Highlighter) resolveTokenizeOpts(maxLine, timeout *int) tokenizer.TokenizeOptions {
+	opts := tokenizer.TokenizeOptions{
+		MaxLineLength: h.maxLineLength,
+		TimeoutMs:     h.timeoutMs,
+	}
+	if maxLine != nil {
+		opts.MaxLineLength = *maxLine
+	}
+	if timeout != nil {
+		opts.TimeoutMs = *timeout
+	}
+	return opts
 }
 
 // Close releases all WASM resources. Safe to call multiple times.
@@ -122,10 +140,11 @@ func (h *Highlighter) CodeToTokens(
 		return h.plaintextFallback(code, thm), nil
 	}
 
+	tokOpts := h.resolveTokenizeOpts(opts.MaxLineLength, opts.TimeoutMs)
 	var tokResult *tokenizer.TokenizeResult
 	doErr := h.pool.Do(ctx, func(lib oniguruma.OnigLib) error {
 		var tokenizeErr error
-		tokResult, tokenizeErr = tokenizer.Tokenize(ctx, []byte(code), g, lib, h.reg)
+		tokResult, tokenizeErr = tokenizer.Tokenize(ctx, []byte(code), g, lib, tokOpts, h.reg)
 		return tokenizeErr
 	})
 	if doErr != nil {
@@ -151,11 +170,13 @@ func (h *Highlighter) CodeToHTML(
 	var result *ast.TokensResult
 	var err error
 	if opts.Themes != nil {
-		result, err = h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes)
+		result, err = h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes, opts.MaxLineLength, opts.TimeoutMs)
 	} else {
 		result, err = h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
-			Lang:  opts.Lang,
-			Theme: opts.Theme,
+			Lang:          opts.Lang,
+			Theme:         opts.Theme,
+			MaxLineLength: opts.MaxLineLength,
+			TimeoutMs:     opts.TimeoutMs,
 		})
 	}
 	if err != nil {
@@ -244,6 +265,7 @@ func (h *Highlighter) codeToTokensMulti(
 	code string,
 	lang string,
 	themes map[string]string,
+	maxLineLength, timeoutMs *int,
 ) (*ast.TokensResult, error) {
 	keys := make([]string, 0, len(themes))
 	for k := range themes {
@@ -274,10 +296,11 @@ func (h *Highlighter) codeToTokensMulti(
 		return result, nil
 	}
 
+	tokOpts := h.resolveTokenizeOpts(maxLineLength, timeoutMs)
 	var tokResult *tokenizer.TokenizeResult
 	doErr := h.pool.Do(ctx, func(lib oniguruma.OnigLib) error {
 		var tokenizeErr error
-		tokResult, tokenizeErr = tokenizer.Tokenize(ctx, []byte(code), g, lib, h.reg)
+		tokResult, tokenizeErr = tokenizer.Tokenize(ctx, []byte(code), g, lib, tokOpts, h.reg)
 		return tokenizeErr
 	})
 	if doErr != nil {

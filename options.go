@@ -6,9 +6,11 @@ import (
 )
 
 type options struct {
-	grammarFS fs.FS
-	themeFS   fs.FS
-	poolSize  int
+	grammarFS     fs.FS
+	themeFS       fs.FS
+	poolSize      int
+	maxLineLength int
+	timeoutMs     int
 }
 
 // Option configures a Highlighter.
@@ -38,6 +40,20 @@ func WithFS(fsys fs.FS) Option {
 // Defaults to runtime.NumCPU().
 func WithPoolSize(n int) Option {
 	return func(o *options) { o.poolSize = n }
+}
+
+// WithMaxLineLength sets the byte-length threshold for per-line pre-filtering.
+// Lines exceeding this are emitted as a single unstyled token with a "too_long"
+// diagnostic. 0 means no limit (the default).
+func WithMaxLineLength(n int) Option {
+	return func(o *options) { o.maxLineLength = n }
+}
+
+// WithTimeoutMs sets the per-line soft timeout in milliseconds. Lines whose
+// tokenization exceeds this are stopped early; partial tokens are preserved and
+// a "timeout" diagnostic is recorded. 0 means no timeout (the default).
+func WithTimeoutMs(ms int) Option {
+	return func(o *options) { o.timeoutMs = ms }
 }
 
 func defaultOptions() options {

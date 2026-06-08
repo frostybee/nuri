@@ -2,6 +2,7 @@ package tokenizer
 
 import (
 	"context"
+	"time"
 
 	"github.com/frostybee/nuri/internal/grammar"
 	"github.com/frostybee/nuri/internal/oniguruma"
@@ -18,7 +19,8 @@ func tokenizeLine(
 	cache *scannerCache,
 	startPos int,
 	isFirstLine bool,
-) ([]Token, *StateStack, error) {
+	deadline time.Time,
+) ([]Token, *StateStack, bool, error) {
 
 	builder := newLineTokenBuilder(startPos)
 	lineLen := len(line)
@@ -39,6 +41,7 @@ func tokenizeLine(
 		resolver:   resolver,
 		injections: injections,
 		cache:      cache,
+		deadline:   deadline,
 	}
 
 	// Strip trailing newline for the purpose of token text,
@@ -60,6 +63,13 @@ func tokenizeLine(
 	pos := startPos
 loop:
 	for pos < lineLen {
+		if !deadline.IsZero() && time.Now().After(deadline) {
+			if pos < tokenEnd {
+				builder.produce(tokenEnd, state.scopeSlice())
+			}
+			return builder.finish(), state, true, nil
+		}
+
 		activeRules, endRule := getActivePatterns(state, g)
 
 		compileG := g
@@ -185,7 +195,7 @@ loop:
 	if len(line) > 0 && line[len(line)-1] == '\n' {
 		builder.finalize(len(line))
 	}
-	return builder.finish(), state, nil
+	return builder.finish(), state, false, nil
 }
 
 func getActivePatterns(state *StateStack, g *grammar.Grammar) ([]grammar.Rule, *grammar.EndRule) {

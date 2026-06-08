@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/frostybee/nuri/internal/grammar"
 	"github.com/frostybee/nuri/internal/oniguruma"
@@ -20,6 +21,7 @@ type captureContext struct {
 	resolver   grammar.GrammarResolver
 	injections []grammar.Injection
 	cache      *scannerCache
+	deadline   time.Time
 }
 
 // handleCaptures processes capture groups from a match, emitting a flat,
@@ -160,9 +162,9 @@ func retokenizeCapture(
 	scopeName := strings.Join(scopes, " ")
 	tempState := newStateStack(captureRoot, scopeName)
 
-	tokens, _, err := tokenizeLine(
+	tokens, _, _, err := tokenizeLine(
 		cc.ctx, truncatedLine, cc.g, cc.onigLib,
-		tempState, cc.resolver, nil, cc.cache, captureStart, false,
+		tempState, cc.resolver, nil, cc.cache, captureStart, false, time.Time{},
 	)
 	if err != nil || len(tokens) == 0 {
 		builder.produce(captureEnd, scopes)

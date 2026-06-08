@@ -30,7 +30,7 @@ func TestGoPackageDecl(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("package main\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestGoFuncDecl(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("func main() {\n}\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestGoVarDecl(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("var x int = 42\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestJavaScriptConst(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("const x = 1;\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestJavaScriptConstPI(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("const PI = 3.14159;\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestOverlappingCaptures(t *testing.T) {
 
 	// Test 1: function declaration with captures 1, 2, 3 inside capture 0
 	src := []byte("fn main(x)")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestOverlappingCaptures(t *testing.T) {
 
 	// Test 2: assignment with captures 0 (full), 1, 2, 3
 	src2 := []byte("let count = total")
-	result2, err := Tokenize(ctx, src2, g, onigLib)
+	result2, err := Tokenize(ctx, src2, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestNonASCIIByteOffsets(t *testing.T) {
 
 	// "変数" is 6 bytes (2 × 3-byte CJK), then " := 42"
 	src := []byte("変数 := 42\n")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestEmojiByteOffsets(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("👋 42")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestHTMLEscapingOffsets(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("</script> &amp; 42")
-	result, err := Tokenize(ctx, src, g, onigLib)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{})
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestHTMLCrossGrammarInclude(t *testing.T) {
 	onigLib := newTestOnigLib(t)
 
 	src := []byte("<div></div>\n")
-	result, err := Tokenize(ctx, src, g, onigLib, repo)
+	result, err := Tokenize(ctx, src, g, onigLib, TokenizeOptions{}, repo)
 	if err != nil {
 		t.Fatalf("Tokenize: %v", err)
 	}
