@@ -68,7 +68,7 @@ func compileRule(rule Rule, g *Grammar, repo map[string]Rule, visited map[RuleID
 		}
 
 	case *BeginEndRule:
-		if r.Begin != "" {
+		if r.Begin != "" && !allPatternsUnresolvable(r.Patterns, g, repo, visited, resolver) {
 			result.Rules = append(result.Rules, CompiledRule{
 				Pattern: []byte(r.Begin),
 				Rule:    r,
@@ -77,7 +77,7 @@ func compileRule(rule Rule, g *Grammar, repo map[string]Rule, visited map[RuleID
 		}
 
 	case *BeginWhileRule:
-		if r.Begin != "" {
+		if r.Begin != "" && !allPatternsUnresolvable(r.Patterns, g, repo, visited, resolver) {
 			result.Rules = append(result.Rules, CompiledRule{
 				Pattern: []byte(r.Begin),
 				Rule:    r,
@@ -117,6 +117,26 @@ func compileRule(rule Rule, g *Grammar, repo map[string]Rule, visited map[RuleID
 		// Unknown rule type — skip
 	}
 	return nil
+}
+
+// allPatternsUnresolvable returns true when a rule's sub-patterns consist
+// entirely of includes that fail to resolve. vscode-textmate skips such
+// rules from the scanner (hasMissingPatterns && patterns.length === 0).
+func allPatternsUnresolvable(patterns []Rule, g *Grammar, repo map[string]Rule, visited map[RuleID]bool, resolver GrammarResolver) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+	for _, p := range patterns {
+		inc, ok := p.(*IncludeRule)
+		if !ok {
+			return false
+		}
+		res, err := resolveInclude(inc.Include, g, repo, visited, resolver)
+		if err == nil && len(res.rules) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 const maxIncludeDepth = 256

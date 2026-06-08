@@ -331,15 +331,18 @@ func (h *Highlighter) buildResult(
 	}
 
 	for i, tokLine := range tokResult.Lines {
-		themed := make([]ast.ThemedToken, len(tokLine))
+		themed := make([]ast.ThemedToken, 0, len(tokLine))
 		var line []byte
 		if i < len(lines) {
 			line = lines[i]
 		}
-		for j, tok := range tokLine {
+		for _, tok := range tokLine {
 			var content string
 			if line != nil && tok.Start >= 0 && tok.End <= len(line) {
 				content = strings.TrimRight(string(line[tok.Start:tok.End]), "\n")
+			}
+			if content == "" {
+				continue
 			}
 			ts := thm.Match(tok.Scopes)
 			color := ts.Foreground
@@ -350,13 +353,13 @@ func (h *Highlighter) buildResult(
 			if fontStyle == theme.FontStyleNotSet {
 				fontStyle = theme.FontStyleNone
 			}
-			themed[j] = ast.ThemedToken{
+			themed = append(themed, ast.ThemedToken{
 				Content:   content,
 				Color:     color,
 				BgColor:   ts.Background,
 				FontStyle: fontStyle,
 				Scopes:    tok.Scopes,
-			}
+			})
 		}
 		result.Tokens[i] = themed
 	}
