@@ -158,3 +158,26 @@ func TestParseAllGrammarInjectionSelectors(t *testing.T) {
 	}
 	t.Logf("parsed %d injection selectors across all grammars", totalSelectors)
 }
+
+func TestSelectorNegatedGroupSubsequence(t *testing.T) {
+	sel, err := ParseSelector("L:meta.script.svelte - meta.lang - (meta source)")
+	if err != nil {
+		t.Fatalf("ParseSelector: %v", err)
+	}
+
+	tests := []struct {
+		scopes []string
+		want   bool
+	}{
+		{[]string{"source.svelte", "meta.script.svelte"}, true},
+		{[]string{"source.svelte", "meta.script.svelte", "meta.embedded.block.svelte", "source.js"}, false},
+		{[]string{"source.svelte", "meta.script.svelte", "meta.lang.ts"}, false},
+	}
+
+	for _, tt := range tests {
+		matches, _ := sel.Matches(tt.scopes)
+		if matches != tt.want {
+			t.Errorf("Matches(%v) = %v, want %v", tt.scopes, matches, tt.want)
+		}
+	}
+}

@@ -73,13 +73,12 @@ func (c *Composite) matches(scopes []string) bool {
 		}
 	}
 
-	// Check negative expressions first: if ANY scope matches a negated
-	// expression, the whole composite fails.
+	// Check negative expressions against the full scope stack.
+	// vscode-textmate's nameMatcher requires all identifiers in a
+	// conjunction to match as an ordered subsequence — not per-scope.
 	for _, neg := range negative {
-		for _, scope := range scopes {
-			if neg.matchesSingle(scope) {
-				return false
-			}
+		if neg.matchesStack(scopes) {
+			return false
 		}
 	}
 
@@ -115,6 +114,55 @@ func (g *Group) matchesSingle(scope string) bool {
 		// has a single positive expression that matches
 		for _, expr := range alt.Expressions {
 			if !expr.Negate && expr.matchesSingle(scope) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// matchesStack checks if this expression matches against the full scope stack.
+func (e *Expression) matchesStack(scopes []string) bool {
+	if e.Group != nil {
+		return e.Group.matchesStack(scopes)
+	}
+	if e.Path != nil {
+		for _, scope := range scopes {
+			if scopeMatches(e.Path.Scope, scope) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *Group) matchesStack(scopes []string) bool {
+	for _, alt := range g.Alternatives {
+		if alt.matchesAsSubsequence(scopes) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesAsSubsequence checks if all positive path expressions in this
+// composite match as an ordered subsequence of the scope stack.
+// Mirrors vscode-textmate's nameMatcher (grammar.ts:71-85).
+func (c *Composite) matchesAsSubsequence(scopes []string) bool {
+	var paths []string
+	for _, expr := range c.Expressions {
+		if !expr.Negate && expr.Path != nil {
+			paths = append(paths, expr.Path.Scope)
+		}
+	}
+	if len(paths) == 0 {
+		return true
+	}
+	pathIdx := 0
+	for _, scope := range scopes {
+		if scopeMatches(paths[pathIdx], scope) {
+			pathIdx++
+			if pathIdx >= len(paths) {
 				return true
 			}
 		}

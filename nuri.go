@@ -207,7 +207,7 @@ func (h *Highlighter) buildResult(
 		for j, tok := range tokLine {
 			var content string
 			if line != nil && tok.Start >= 0 && tok.End <= len(line) {
-				content = string(line[tok.Start:tok.End])
+				content = strings.TrimRight(string(line[tok.Start:tok.End]), "\n")
 			}
 			ts := thm.Match(tok.Scopes)
 			color := ts.Foreground
