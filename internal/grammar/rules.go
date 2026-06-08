@@ -106,9 +106,12 @@ func (r *IncludeRule) GetID() RuleID { return r.ID }
 
 // CollectionRule is a container that holds child patterns.
 // It flattens its children during compilation.
+// Repository holds local definitions that shadow the parent repository
+// when resolving includes within this collection's patterns.
 type CollectionRule struct {
-	ID       RuleID
-	Patterns []Rule
+	ID         RuleID
+	Patterns   []Rule
+	Repository map[string]Rule
 }
 
 func (r *CollectionRule) GetID() RuleID { return r.ID }

@@ -153,9 +153,18 @@ func parseRule(raw rawRule, ids *idCounter) (Rule, error) {
 		if err != nil {
 			return nil, fmt.Errorf("collection patterns: %w", err)
 		}
+		var localRepo map[string]Rule
+		if len(raw.Repository) > 0 {
+			rawRepo, _ := json.Marshal(raw.Repository)
+			localRepo, err = parseRepository(rawRepo, ids)
+			if err != nil {
+				return nil, fmt.Errorf("collection repository: %w", err)
+			}
+		}
 		return &CollectionRule{
-			ID:       ids.nextID(),
-			Patterns: children,
+			ID:         ids.nextID(),
+			Patterns:   children,
+			Repository: localRepo,
 		}, nil
 
 	default:

@@ -93,6 +93,8 @@ func compileRule(rule Rule, g *Grammar, repo map[string]Rule, visited map[RuleID
 		if res.grammar != nil {
 			childG = res.grammar
 			childRepo = res.repo
+		} else if res.repo != nil {
+			childRepo = res.repo
 		}
 		for _, child := range res.rules {
 			if err := compileRule(child, childG, childRepo, visited, resolver, result); err != nil {
@@ -145,7 +147,17 @@ func resolveInclude(include string, g *Grammar, repo map[string]Rule, visited ma
 
 		switch v := r.(type) {
 		case *CollectionRule:
-			return resolveResult{rules: v.Patterns}, nil
+			var childRepo map[string]Rule
+			if len(v.Repository) > 0 {
+				childRepo = make(map[string]Rule, len(repo)+len(v.Repository))
+				for k, val := range repo {
+					childRepo[k] = val
+				}
+				for k, val := range v.Repository {
+					childRepo[k] = val
+				}
+			}
+			return resolveResult{repo: childRepo, rules: v.Patterns}, nil
 		default:
 			return resolveResult{rules: []Rule{r}}, nil
 		}

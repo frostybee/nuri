@@ -100,9 +100,14 @@ func handleCaptures(
 
 		// Capture re-tokenization: if this capture rule has nested patterns,
 		// recursively tokenize the captured substring.
+		// vscode-textmate retokenizes captures independently of surrounding
+		// capture scopes — parent capture names do not nest into children.
 		if len(cr.Patterns) > 0 && cc != nil {
-			retokenizeCapture(cc, cr.Patterns, captureScopes, c.Start, c.End, builder)
-			// Skip pushing a frame — the retokenized tokens cover the range.
+			retokScopes := append([]string{}, scopes...)
+			if resolvedCRName != "" {
+				retokScopes = appendScopes(retokScopes, resolvedCRName)
+			}
+			retokenizeCapture(cc, cr.Patterns, retokScopes, c.Start, c.End, builder)
 			continue
 		}
 
