@@ -3,7 +3,24 @@ package nuri
 import (
 	"io/fs"
 	"runtime"
+
+	"github.com/frostybee/nuri/ast"
 )
+
+type grammarEntry struct {
+	name string
+	data []byte
+}
+
+type themeEntry struct {
+	name string
+	data []byte
+}
+
+type aliasEntry struct {
+	alias  string
+	target string
+}
 
 type options struct {
 	grammarFS     fs.FS
@@ -11,6 +28,10 @@ type options struct {
 	poolSize      int
 	maxLineLength int
 	timeoutMs     int
+	grammars      []grammarEntry
+	themes        []themeEntry
+	aliases       []aliasEntry
+	defaults      *ast.CodeToHTMLOptions
 }
 
 // Option configures a Highlighter.
@@ -54,6 +75,35 @@ func WithMaxLineLength(n int) Option {
 // a "timeout" diagnostic is recorded. 0 means no timeout (the default).
 func WithTimeoutMs(ms int) Option {
 	return func(o *options) { o.timeoutMs = ms }
+}
+
+// WithGrammar registers a custom grammar from JSON bytes at construction time.
+func WithGrammar(name string, data []byte) Option {
+	return func(o *options) {
+		o.grammars = append(o.grammars, grammarEntry{name, data})
+	}
+}
+
+// WithTheme registers a custom theme from JSON bytes at construction time.
+func WithTheme(name string, data []byte) Option {
+	return func(o *options) {
+		o.themes = append(o.themes, themeEntry{name, data})
+	}
+}
+
+// WithAlias registers a language alias at construction time (e.g. "sh" -> "shellscript").
+func WithAlias(alias, target string) Option {
+	return func(o *options) {
+		o.aliases = append(o.aliases, aliasEntry{alias, target})
+	}
+}
+
+// WithDefaults sets default CodeToHTMLOptions applied to every CodeToHTML call.
+// Per-call options override these defaults (non-zero values win).
+func WithDefaults(defaults CodeToHTMLOptions) Option {
+	return func(o *options) {
+		o.defaults = &defaults
+	}
 }
 
 func defaultOptions() options {

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"os"
 	"time"
@@ -118,6 +119,23 @@ const jsNotationSnippet = `function calculate(a, b) {
 }
 `
 
+const dslSnippet = `let name = "world"
+set count = 42
+if count > 10
+  print "hello"
+end
+`
+
+const goDefaultsSnippet = `func main() {
+	fmt.Println("Theme from WithDefaults")
+}
+`
+
+const goOverrideSnippet = `func main() {
+	fmt.Println("Theme overridden per-call")
+}
+`
+
 const goClassMapSnippet = `var ErrNotFound = errors.New("not found")
 
 func Lookup(id string) (*Record, error) {
@@ -135,6 +153,26 @@ function circleArea(r) {
   return PI * r * r;
 }
 `
+
+const ansiTestRunnerSnippet = "\x1b[1mRunning tests...\x1b[0m\n" +
+	"\x1b[32m  PASS\x1b[0m  TestAuth         \x1b[90m(0.03s)\x1b[0m\n" +
+	"\x1b[32m  PASS\x1b[0m  TestLogin        \x1b[90m(0.12s)\x1b[0m\n" +
+	"\x1b[31m  FAIL\x1b[0m  TestAPI          \x1b[90m(0.45s)\x1b[0m\n" +
+	"\x1b[32m  PASS\x1b[0m  TestWebSocket    \x1b[90m(0.08s)\x1b[0m\n" +
+	"\x1b[33m  SKIP\x1b[0m  TestIntegration  \x1b[90m(0.00s)\x1b[0m\n" +
+	"\n" +
+	"\x1b[1;31m1 failed\x1b[0m, \x1b[32m3 passed\x1b[0m, \x1b[33m1 skipped\x1b[0m"
+
+const ansiBuildSnippet = "\x1b[1;36m  Compiling\x1b[0m nuri v0.1.0\n" +
+	"\x1b[1;36m  Compiling\x1b[0m wazero v1.8.2\n" +
+	"\x1b[1;31merror\x1b[0m: mismatched types\n" +
+	"  \x1b[34m-->\x1b[0m src/engine.go:42:5\n" +
+	"   \x1b[90m|\x1b[0m\n" +
+	"\x1b[90m42\x1b[0m \x1b[90m|\x1b[0m     return \x1b[38;2;255;128;0m\"invalid\"\x1b[0m\n" +
+	"   \x1b[90m|\x1b[0m            \x1b[1;31m^^^^^^^^^\x1b[0m expected int, found string\n" +
+	"\n" +
+	"\x1b[1;33mwarning\x1b[0m: unused variable \x1b[38;5;214m`count`\x1b[0m\n" +
+	"  \x1b[34m-->\x1b[0m src/engine.go:38:6"
 
 func main() {
 	outPath := flag.String("o", "cmd/demo/output.html", "output file path")
@@ -295,6 +333,32 @@ func main() {
 		ExtraHTML: template.HTML(fmt.Sprintf("<pre class=\"css-dump\"><code>%s</code></pre>", template.HTMLEscapeString(extractedCSS))),
 	})
 
+	// Section 8: Custom Configuration (constructor options)
+	sections = append(sections, buildCustomConfigSection(ctx, 8))
+
+	// Section 9: ANSI Highlighting
+	sections = append(sections, Section{
+		ID:          9,
+		Title:       "ANSI Highlighting",
+		Description: `Terminal output with ANSI escape codes rendered as colored HTML (lang: "ansi").`,
+		Blocks: []Block{
+			{
+				Label: "Test Runner Output",
+				HTML: template.HTML(must(h.CodeToHTML(ctx, ansiTestRunnerSnippet, nuri.CodeToHTMLOptions{
+					Lang:  "ansi",
+					Theme: "github-dark-high-contrast",
+				}))),
+			},
+			{
+				Label: "Build Output (with truecolor + 256-color)",
+				HTML: template.HTML(must(h.CodeToHTML(ctx, ansiBuildSnippet, nuri.CodeToHTMLOptions{
+					Lang:  "ansi",
+					Theme: "github-dark-high-contrast",
+				}))),
+			},
+		},
+	})
+
 	data := struct {
 		Sections  []Section
 		Generated string
@@ -324,4 +388,66 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("Wrote %s\n", *outPath)
+}
+
+func buildCustomConfigSection(ctx context.Context, id int) Section {
+	// Load an existing bundled theme and re-register it under a custom name.
+	bundleFS := core.FS()
+	draculaData, err := fs.ReadFile(bundleFS, "themes/dracula.json")
+	if err != nil {
+		log.Fatalf("read dracula theme: %v", err)
+	}
+
+	// A minimal toy DSL grammar.
+	dslGrammar := []byte(`{
+		"scopeName": "source.mydsl",
+		"patterns": [
+			{"match": "\\b(let|set|if|end|print)\\b", "name": "keyword.control.mydsl"},
+			{"match": "\\b\\d+\\b", "name": "constant.numeric.mydsl"},
+			{"begin": "\"", "end": "\"", "name": "string.quoted.double.mydsl"}
+		]
+	}`)
+
+	h, err := nuri.New(ctx,
+		nuri.WithFS(bundleFS),
+		nuri.WithPoolSize(1),
+		nuri.WithTheme("my-custom-theme", draculaData),
+		nuri.WithGrammar("my-dsl", dslGrammar),
+		nuri.WithAlias("mydsl", "my-dsl"),
+		nuri.WithDefaults(nuri.CodeToHTMLOptions{
+			Theme:    "my-custom-theme",
+			PreClass: "demo-defaults",
+		}),
+	)
+	if err != nil {
+		log.Fatalf("New (custom config): %v", err)
+	}
+	defer h.Close(ctx)
+
+	// Block 1: Custom grammar via alias — proves WithGrammar + WithAlias.
+	dslHTML := must(h.CodeToHTML(ctx, dslSnippet, nuri.CodeToHTMLOptions{
+		Lang: "mydsl",
+	}))
+
+	// Block 2: Go with no Theme — proves WithDefaults supplies "my-custom-theme".
+	goDefaultsHTML := must(h.CodeToHTML(ctx, goDefaultsSnippet, nuri.CodeToHTMLOptions{
+		Lang: "go",
+	}))
+
+	// Block 3: Go with explicit Theme override — proves per-call wins.
+	goOverrideHTML := must(h.CodeToHTML(ctx, goOverrideSnippet, nuri.CodeToHTMLOptions{
+		Lang:  "go",
+		Theme: "github-dark-high-contrast",
+	}))
+
+	return Section{
+		ID:          id,
+		Title:       "Custom Configuration — Constructor Options",
+		Description: "WithTheme, WithGrammar, WithAlias, and WithDefaults exercised in a single New() call.",
+		Blocks: []Block{
+			{Label: "Custom Grammar (via WithGrammar + WithAlias)", HTML: template.HTML(dslHTML)},
+			{Label: "Go — Theme from WithDefaults (dracula)", HTML: template.HTML(goDefaultsHTML)},
+			{Label: "Go — Theme overridden per-call (github-dark-high-contrast)", HTML: template.HTML(goOverrideHTML)},
+		},
+	}
 }

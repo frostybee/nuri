@@ -93,6 +93,17 @@ type CodeToHTMLOptions struct {
 	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
 }
 
+// ThemeColors exposes a theme's UI colors for consumers building code block
+// chrome (title bars, copy buttons, terminal frames, etc.).
+type ThemeColors struct {
+	Type                string            // "light" or "dark"
+	Background          string            // editor.background
+	Foreground          string            // editor.foreground
+	SelectionBackground string            // editor.selectionBackground
+	LineHighlightBg     string            // editor.lineHighlightBackground
+	Colors              map[string]string // full color map (editor.*, terminal.*, etc.)
+}
+
 // StyleClassMap collects unique style combinations and assigns deterministic
 // class names. Pass a shared instance across multiple CodeToHTML calls to
 // deduplicate styles across code blocks, then call CSS() for the stylesheet.

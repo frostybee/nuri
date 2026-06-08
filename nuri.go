@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/frostybee/nuri/ast"
+	"github.com/frostybee/nuri/internal/ansi"
 	"github.com/frostybee/nuri/internal/registry"
 	"github.com/frostybee/nuri/internal/oniguruma"
 	"github.com/frostybee/nuri/internal/tokenizer"
@@ -32,6 +33,7 @@ type (
 	CodeToHTMLOptions  = ast.CodeToHTMLOptions
 	LineRange          = ast.LineRange
 	StyleClassMap      = ast.StyleClassMap
+	ThemeColors        = ast.ThemeColors
 )
 
 // Re-export ast functions.
@@ -49,6 +51,7 @@ type Highlighter struct {
 	reg           *registry.Registry
 	maxLineLength int
 	timeoutMs     int
+	defaults      *ast.CodeToHTMLOptions
 	closeOnce     sync.Once
 }
 
@@ -84,6 +87,23 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 	for alias, target := range defaultAliases {
 		reg.RegisterAlias(alias, target)
 	}
+	for _, g := range cfg.grammars {
+		if err := reg.RegisterGrammar(g.name, g.data); err != nil {
+			pool.Close(ctx)
+			eng.Close(ctx)
+			return nil, err
+		}
+	}
+	for _, t := range cfg.themes {
+		if err := reg.RegisterTheme(t.name, t.data); err != nil {
+			pool.Close(ctx)
+			eng.Close(ctx)
+			return nil, err
+		}
+	}
+	for _, a := range cfg.aliases {
+		reg.RegisterAlias(a.alias, a.target)
+	}
 
 	return &Highlighter{
 		eng:           eng,
@@ -91,6 +111,7 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 		reg:           reg,
 		maxLineLength: cfg.maxLineLength,
 		timeoutMs:     cfg.timeoutMs,
+		defaults:      cfg.defaults,
 	}, nil
 }
 
@@ -131,6 +152,10 @@ func (h *Highlighter) CodeToTokens(
 		return nil, err
 	}
 
+	if opts.Lang == "ansi" {
+		return h.ansiHighlight(code, thm), nil
+	}
+
 	g, langErr := h.reg.GetGrammar(opts.Lang)
 	if langErr != nil && !errors.Is(langErr, ErrLanguageNotFound) {
 		return nil, langErr
@@ -154,6 +179,91 @@ func (h *Highlighter) CodeToTokens(
 	return h.buildResult(code, tokResult, thm), nil
 }
 
+// CodeToHighlightedTokens tokenizes source code and resolves each token's
+// color from the specified theme, returning colored tokens without HTML.
+// This is equivalent to CodeToTokens (which already resolves colors).
+func (h *Highlighter) CodeToHighlightedTokens(
+	ctx context.Context,
+	code string,
+	opts ast.CodeToTokensOptions,
+) (*ast.TokensResult, error) {
+	return h.CodeToTokens(ctx, code, opts)
+}
+
+// GetThemeColors returns the UI colors for a loaded theme. Consumers building
+// code block chrome (title bars, copy buttons, terminal frames) use these to
+// style their wrappers consistently with the highlighted code.
+func (h *Highlighter) GetThemeColors(themeName string) (ThemeColors, error) {
+	thm, err := h.reg.GetTheme(themeName)
+	if err != nil {
+		return ThemeColors{}, err
+	}
+	return ThemeColors{
+		Type:                thm.Type,
+		Background:          thm.DefaultBackground,
+		Foreground:          thm.DefaultForeground,
+		SelectionBackground: thm.Colors["editor.selectionBackground"],
+		LineHighlightBg:     thm.Colors["editor.lineHighlightBackground"],
+		Colors:              thm.Colors,
+	}, nil
+}
+
+func (h *Highlighter) applyDefaults(opts ast.CodeToHTMLOptions) ast.CodeToHTMLOptions {
+	if h.defaults == nil {
+		return opts
+	}
+	d := *h.defaults
+	if opts.Lang != "" {
+		d.Lang = opts.Lang
+	}
+	if opts.Theme != "" {
+		d.Theme = opts.Theme
+	}
+	if opts.Themes != nil {
+		d.Themes = opts.Themes
+	}
+	if opts.DefaultColor != nil {
+		d.DefaultColor = opts.DefaultColor
+	}
+	if opts.Transformers != nil {
+		d.Transformers = opts.Transformers
+	}
+	if opts.HighlightLines != nil {
+		d.HighlightLines = opts.HighlightLines
+	}
+	if opts.FocusLines != nil {
+		d.FocusLines = opts.FocusLines
+	}
+	if opts.InsertedLines != nil {
+		d.InsertedLines = opts.InsertedLines
+	}
+	if opts.DeletedLines != nil {
+		d.DeletedLines = opts.DeletedLines
+	}
+	if opts.PreClass != "" {
+		d.PreClass = opts.PreClass
+	}
+	if opts.CodeClass != "" {
+		d.CodeClass = opts.CodeClass
+	}
+	if opts.PreAttrs != nil {
+		d.PreAttrs = opts.PreAttrs
+	}
+	if opts.CodeAttrs != nil {
+		d.CodeAttrs = opts.CodeAttrs
+	}
+	if opts.ClassMap != nil {
+		d.ClassMap = opts.ClassMap
+	}
+	if opts.MaxLineLength != nil {
+		d.MaxLineLength = opts.MaxLineLength
+	}
+	if opts.TimeoutMs != nil {
+		d.TimeoutMs = opts.TimeoutMs
+	}
+	return d
+}
+
 // CodeToHTML tokenizes source code, resolves colors from the theme,
 // and renders the result as an HTML string.
 func (h *Highlighter) CodeToHTML(
@@ -161,6 +271,7 @@ func (h *Highlighter) CodeToHTML(
 	code string,
 	opts ast.CodeToHTMLOptions,
 ) (string, error) {
+	opts = h.applyDefaults(opts)
 	for _, tr := range opts.Transformers {
 		if s := tr.Preprocess(code, &opts); s != "" {
 			code = s
@@ -285,6 +396,12 @@ func (h *Highlighter) codeToTokensMulti(
 	defaultKey := keys[0]
 	defaultThm := thms[defaultKey]
 
+	if lang == "ansi" {
+		result := h.ansiHighlight(code, defaultThm)
+		h.addMultiThemeInfo(result, keys, thms, defaultKey)
+		return result, nil
+	}
+
 	g, langErr := h.reg.GetGrammar(lang)
 	if langErr != nil && !errors.Is(langErr, ErrLanguageNotFound) {
 		return nil, langErr
@@ -358,6 +475,33 @@ func (h *Highlighter) addMultiThemeInfo(
 		}
 		result.ThemeFG[k] = thms[k].DefaultForeground
 		result.ThemeBG[k] = thms[k].DefaultBackground
+	}
+}
+
+func (h *Highlighter) ansiHighlight(code string, thm *theme.Theme) *ast.TokensResult {
+	lines := ansi.Tokenize(code)
+	themed := make([][]ast.ThemedToken, len(lines))
+	for i, tokLine := range lines {
+		row := make([]ast.ThemedToken, len(tokLine))
+		for j, tok := range tokLine {
+			color := tok.Style.FG
+			if color == "" {
+				color = thm.DefaultForeground
+			}
+			row[j] = ast.ThemedToken{
+				Content:   tok.Content,
+				Color:     color,
+				BgColor:   tok.Style.BG,
+				FontStyle: tok.Style.FontStyle,
+			}
+		}
+		themed[i] = row
+	}
+	return &ast.TokensResult{
+		Tokens:    themed,
+		FG:        thm.DefaultForeground,
+		BG:        thm.DefaultBackground,
+		ThemeName: thm.Name,
 	}
 }
 
