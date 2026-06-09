@@ -22,6 +22,11 @@ type aliasEntry struct {
 	target string
 }
 
+type extensionEntry struct {
+	ext  string
+	lang string
+}
+
 type options struct {
 	grammarFS     fs.FS
 	themeFS       fs.FS
@@ -31,6 +36,7 @@ type options struct {
 	grammars      []grammarEntry
 	themes        []themeEntry
 	aliases       []aliasEntry
+	extensions    []extensionEntry
 	defaults      *ast.CodeToHTMLOptions
 }
 
@@ -95,6 +101,14 @@ func WithTheme(name string, data []byte) Option {
 func WithAlias(alias, target string) Option {
 	return func(o *options) {
 		o.aliases = append(o.aliases, aliasEntry{alias, target})
+	}
+}
+
+// WithExtension maps a file extension (without dot) to a language name at
+// construction time. Overrides any existing mapping for that extension.
+func WithExtension(ext, lang string) Option {
+	return func(o *options) {
+		o.extensions = append(o.extensions, extensionEntry{ext, lang})
 	}
 }
 

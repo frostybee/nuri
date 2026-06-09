@@ -97,6 +97,15 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 	for alias, target := range defaultAliases {
 		reg.RegisterAlias(alias, target)
 	}
+	for ext, lang := range defaultExtensions {
+		reg.RegisterExtension(ext, lang)
+	}
+	for filename, lang := range defaultFilenames {
+		reg.RegisterFilename(filename, lang)
+	}
+	for _, e := range cfg.extensions {
+		reg.RegisterExtension(e.ext, e.lang)
+	}
 	for _, g := range cfg.grammars {
 		if err := reg.RegisterGrammar(g.name, g.data); err != nil {
 			pool.Close(ctx)
@@ -216,6 +225,26 @@ func (h *Highlighter) GetThemeColors(themeName string) (ThemeColors, error) {
 		LineHighlightBg:     thm.Colors["editor.lineHighlightBackground"],
 		Colors:              thm.Colors,
 	}, nil
+}
+
+// DetectLanguage resolves a language name from a filename or path.
+// It checks exact filenames first (e.g. "Makefile"), then file extensions.
+// Returns the language name usable with CodeToHTML/CodeToANSI/CodeToTokens,
+// and true if a match was found.
+func (h *Highlighter) DetectLanguage(filename string) (string, bool) {
+	return h.reg.DetectByFilename(filename)
+}
+
+// DetectLanguageByContent resolves a language from the first line of content.
+// Useful for shebang detection (e.g. "#!/usr/bin/env python3").
+func (h *Highlighter) DetectLanguageByContent(firstLine string) (string, bool) {
+	return h.reg.DetectByFirstLine(firstLine)
+}
+
+// RegisterExtension maps a file extension (without dot) to a language name,
+// overriding any existing mapping for that extension.
+func (h *Highlighter) RegisterExtension(ext, lang string) {
+	h.reg.RegisterExtension(ext, lang)
 }
 
 func (h *Highlighter) applyDefaults(opts ast.CodeToHTMLOptions) ast.CodeToHTMLOptions {

@@ -154,6 +154,39 @@ func main() {
 		}
 		writef("%s\n", out)
 	}
+	if !waitForKey() {
+		return
+	}
+
+	// --- Section 4: Language detection ---
+	printSection("Language Detection", "auto-detect from filename")
+	detectFiles := []struct {
+		filename string
+		snippet  string
+	}{
+		{"main.go", goSnippet},
+		{"app.py", pySnippet},
+		{"index.js", jsSnippet},
+		{"Makefile", "all: build\n\nbuild:\n\tgo build ./...\n"},
+		{"style.css", "body {\n  margin: 0;\n  font-family: sans-serif;\n}\n"},
+	}
+	for _, df := range detectFiles {
+		lang, ok := h.DetectLanguage(df.filename)
+		if !ok {
+			writef("  %s%s%s %s→ not detected%s\n", bold, df.filename, reset, dim, reset)
+			continue
+		}
+		printLabel(fmt.Sprintf("%s → %s", df.filename, lang))
+		out, err := h.CodeToANSI(ctx, df.snippet, nuri.CodeToANSIOptions{
+			Lang:  lang,
+			Theme: "github-dark",
+		})
+		if err != nil {
+			writef("  %serror:%s %v\n", red, reset, err)
+			continue
+		}
+		writef("%s\n", out)
+	}
 
 	writef("\n")
 }

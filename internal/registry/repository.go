@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -14,10 +16,13 @@ import (
 type Repository struct {
 	fsys           fs.FS
 	mu             sync.RWMutex
-	grammars       map[string]*grammar.Grammar // name → parsed grammar
-	scopeIndex     map[string]string           // scopeName → name
-	registered     map[string][]byte           // name → raw JSON (programmatic)
-	injectionIndex map[string][]string         // targetScope → []grammarNames that inject into it
+	grammars       map[string]*grammar.Grammar    // name → parsed grammar
+	scopeIndex     map[string]string              // scopeName → name
+	registered     map[string][]byte              // name → raw JSON (programmatic)
+	injectionIndex map[string][]string            // targetScope → []grammarNames that inject into it
+	extIndex       map[string]string              // extension (no dot, lowercase) → grammar name
+	filenameIndex  map[string]string              // exact filename → grammar name
+	firstLineIndex map[string]*regexp.Regexp      // grammar name → compiled firstLineMatch
 }
 
 func NewRepository(fsys fs.FS) (*Repository, error) {
@@ -27,11 +32,13 @@ func NewRepository(fsys fs.FS) (*Repository, error) {
 		scopeIndex:     make(map[string]string),
 		registered:     make(map[string][]byte),
 		injectionIndex: make(map[string][]string),
+		extIndex:       make(map[string]string),
+		filenameIndex:  make(map[string]string),
+		firstLineIndex: make(map[string]*regexp.Regexp),
 	}
-	if err := r.buildScopeIndex(); err != nil {
+	if err := r.buildIndexes(); err != nil {
 		return nil, err
 	}
-	r.buildInjectionIndex()
 	return r, nil
 }
 
@@ -76,8 +83,10 @@ func (r *Repository) GetByScope(scope string) (*grammar.Grammar, error) {
 
 func (r *Repository) Register(name string, data []byte) error {
 	var probe struct {
-		ScopeName string   `json:"scopeName"`
-		InjectTo  []string `json:"injectTo"`
+		ScopeName      string   `json:"scopeName"`
+		InjectTo       []string `json:"injectTo"`
+		FileTypes      []string `json:"fileTypes"`
+		FirstLineMatch string   `json:"firstLineMatch"`
 	}
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return fmt.Errorf("register %q: %w", name, err)
@@ -93,6 +102,15 @@ func (r *Repository) Register(name string, data []byte) error {
 	}
 	for _, target := range probe.InjectTo {
 		r.injectionIndex[target] = append(r.injectionIndex[target], name)
+	}
+	for _, ext := range probe.FileTypes {
+		ext = strings.ToLower(ext)
+		r.extIndex[ext] = name
+	}
+	if probe.FirstLineMatch != "" {
+		if re, err := regexp.Compile(probe.FirstLineMatch); err == nil {
+			r.firstLineIndex[name] = re
+		}
 	}
 	return nil
 }
@@ -124,7 +142,7 @@ func (r *Repository) readGrammarData(name string) ([]byte, error) {
 	return fs.ReadFile(r.fsys, name+".json")
 }
 
-func (r *Repository) buildScopeIndex() error {
+func (r *Repository) buildIndexes() error {
 	if r.fsys == nil {
 		return nil
 	}
@@ -145,46 +163,91 @@ func (r *Repository) buildScopeIndex() error {
 			continue
 		}
 		var probe struct {
-			ScopeName string `json:"scopeName"`
+			ScopeName      string   `json:"scopeName"`
+			InjectTo       []string `json:"injectTo"`
+			FileTypes      []string `json:"fileTypes"`
+			FirstLineMatch string   `json:"firstLineMatch"`
 		}
-		if err := json.Unmarshal(data, &probe); err != nil || probe.ScopeName == "" {
+		if err := json.Unmarshal(data, &probe); err != nil {
 			continue
 		}
-		r.scopeIndex[probe.ScopeName] = name
-	}
-	return nil
-}
-
-func (r *Repository) buildInjectionIndex() {
-	if r.fsys == nil {
-		return
-	}
-
-	entries, err := fs.ReadDir(r.fsys, ".")
-	if err != nil {
-		return
-	}
-
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-		name := strings.TrimSuffix(e.Name(), ".json")
-
-		data, err := fs.ReadFile(r.fsys, e.Name())
-		if err != nil {
-			continue
-		}
-		var probe struct {
-			InjectTo []string `json:"injectTo"`
-		}
-		if err := json.Unmarshal(data, &probe); err != nil || len(probe.InjectTo) == 0 {
-			continue
+		if probe.ScopeName != "" {
+			r.scopeIndex[probe.ScopeName] = name
 		}
 		for _, target := range probe.InjectTo {
 			r.injectionIndex[target] = append(r.injectionIndex[target], name)
 		}
+		for _, ext := range probe.FileTypes {
+			ext = strings.ToLower(ext)
+			if _, exists := r.extIndex[ext]; !exists {
+				r.extIndex[ext] = name
+			}
+		}
+		if probe.FirstLineMatch != "" {
+			if re, err := regexp.Compile(probe.FirstLineMatch); err == nil {
+				r.firstLineIndex[name] = re
+			}
+		}
 	}
+	return nil
+}
+
+// DetectByFilename resolves a grammar name from a filename or path.
+func (r *Repository) DetectByFilename(filename string) (string, bool) {
+	base := filepath.Base(filename)
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if name, ok := r.filenameIndex[base]; ok {
+		return name, true
+	}
+
+	ext := strings.TrimPrefix(filepath.Ext(base), ".")
+	ext = strings.ToLower(ext)
+	if ext != "" {
+		if name, ok := r.extIndex[ext]; ok {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// DetectByFirstLine resolves a grammar name from the first line of content.
+func (r *Repository) DetectByFirstLine(line string) (string, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for name, re := range r.firstLineIndex {
+		if re.MatchString(line) {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// RegisterExtension maps a file extension (without dot) to a grammar name.
+func (r *Repository) RegisterExtension(ext, name string) {
+	r.mu.Lock()
+	r.extIndex[strings.ToLower(ext)] = name
+	r.mu.Unlock()
+}
+
+// RegisterExtensionIfAbsent maps a file extension only if no mapping exists.
+func (r *Repository) RegisterExtensionIfAbsent(ext, name string) {
+	ext = strings.ToLower(ext)
+	r.mu.Lock()
+	if _, exists := r.extIndex[ext]; !exists {
+		r.extIndex[ext] = name
+	}
+	r.mu.Unlock()
+}
+
+// RegisterFilename maps an exact filename to a grammar name.
+func (r *Repository) RegisterFilename(filename, name string) {
+	r.mu.Lock()
+	r.filenameIndex[filename] = name
+	r.mu.Unlock()
 }
 
 // GetInjectors returns parsed grammars that inject into the given target scope.

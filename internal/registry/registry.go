@@ -84,6 +84,31 @@ func (r *Registry) LoadedThemes() []string {
 	return r.themes.LoadedThemes()
 }
 
+// DetectByFilename resolves a grammar name from a filename or path.
+func (r *Registry) DetectByFilename(filename string) (string, bool) {
+	return r.grammars.DetectByFilename(filename)
+}
+
+// DetectByFirstLine resolves a grammar name from the first line of content.
+func (r *Registry) DetectByFirstLine(line string) (string, bool) {
+	return r.grammars.DetectByFirstLine(line)
+}
+
+// RegisterExtension maps a file extension to a grammar name.
+func (r *Registry) RegisterExtension(ext, name string) {
+	r.grammars.RegisterExtension(ext, name)
+}
+
+// RegisterExtensionIfAbsent maps a file extension only if no mapping exists.
+func (r *Registry) RegisterExtensionIfAbsent(ext, name string) {
+	r.grammars.RegisterExtensionIfAbsent(ext, name)
+}
+
+// RegisterFilename maps an exact filename to a grammar name.
+func (r *Registry) RegisterFilename(filename, name string) {
+	r.grammars.RegisterFilename(filename, name)
+}
+
 func (r *Registry) resolveAlias(name string) string {
 	if target, ok := r.aliases[name]; ok {
 		return target

@@ -1,5 +1,73 @@
 package nuri
 
+// defaultExtensions maps file extensions (without dots) to canonical grammar names.
+// Covers languages whose grammar JSON files lack the fileTypes field.
+var defaultExtensions = map[string]string{
+	"go":    "go",
+	"py":    "python",
+	"pyi":   "python",
+	"pyw":   "python",
+	"js":    "javascript",
+	"mjs":   "javascript",
+	"cjs":   "javascript",
+	"ts":    "typescript",
+	"mts":   "typescript",
+	"cts":   "typescript",
+	"jsx":   "jsx",
+	"tsx":   "tsx",
+	"html":  "html",
+	"htm":   "html",
+	"css":   "css",
+	"scss":  "scss",
+	"json":  "json",
+	"jsonc": "jsonc",
+	"rs":    "rust",
+	"c":     "c",
+	"h":     "c",
+	"cpp":   "cpp",
+	"cc":    "cpp",
+	"cxx":   "cpp",
+	"hpp":   "cpp",
+	"hxx":   "cpp",
+	"hh":    "cpp",
+	"cs":    "csharp",
+	"java":  "java",
+	"kt":    "kotlin",
+	"kts":   "kotlin",
+	"rb":    "ruby",
+	"php":   "php",
+	"lua":   "lua",
+	"sql":   "sql",
+	"md":    "markdown",
+	"xml":   "xml",
+	"xsl":   "xml",
+	"svg":   "xml",
+	"yaml":  "yaml",
+	"yml":   "yaml",
+	"toml":  "toml",
+	"sh":    "shellscript",
+	"bash":  "shellscript",
+	"zsh":   "shellscript",
+	"bat":   "bat",
+	"cmd":   "bat",
+	"ps1":   "powershell",
+	"psm1":  "powershell",
+	"psd1":  "powershell",
+	"swift": "swift",
+	"vue":   "vue",
+	"svelte": "svelte",
+}
+
+// defaultFilenames maps exact filenames to canonical grammar names.
+var defaultFilenames = map[string]string{
+	"Makefile":    "make",
+	"makefile":    "make",
+	"GNUmakefile": "make",
+	"Dockerfile":  "docker",
+	"Gemfile":     "ruby",
+	"Rakefile":    "ruby",
+}
+
 // defaultAliases maps common language aliases to canonical grammar names.
 // Extracted from textmate-grammars-themes/packages/tm-grammars/index.js.
 var defaultAliases = map[string]string{

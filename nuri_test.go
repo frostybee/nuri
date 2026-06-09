@@ -24,6 +24,22 @@ func newTestHighlighter(t *testing.T) *Highlighter {
 	return h
 }
 
+func newTestHighlighterWithOpts(t *testing.T, extra ...Option) *Highlighter {
+	t.Helper()
+	ctx := context.Background()
+	opts := append([]Option{
+		WithGrammarFS(os.DirFS(shared.GrammarsDir(t))),
+		WithThemeFS(os.DirFS(shared.ThemesDir(t))),
+		WithPoolSize(1),
+	}, extra...)
+	h, err := New(ctx, opts...)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { h.Close(ctx) })
+	return h
+}
+
 func TestCodeToTokensGoGitHubDark(t *testing.T) {
 	h := newTestHighlighter(t)
 	result, err := h.CodeToTokens(context.Background(), "package main\n", CodeToTokensOptions{
