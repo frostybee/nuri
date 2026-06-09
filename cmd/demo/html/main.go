@@ -175,7 +175,7 @@ const ansiBuildSnippet = "\x1b[1;36m  Compiling\x1b[0m nuri v0.1.0\n" +
 	"  \x1b[34m-->\x1b[0m src/engine.go:38:6"
 
 func main() {
-	outPath := flag.String("o", "cmd/demo/output.html", "output file path")
+	outPath := flag.String("o", "cmd/demo/html/output.html", "output file path")
 	toStdout := flag.Bool("stdout", false, "write to stdout instead of file")
 	flag.Parse()
 
@@ -367,7 +367,7 @@ func main() {
 		Generated: time.Now().Format(time.RFC3339),
 	}
 
-	tmpl, err := template.ParseFiles("cmd/demo/template.html")
+	tmpl, err := template.ParseFiles("cmd/demo/html/template.html")
 	if err != nil {
 		log.Fatal(err)
 	}

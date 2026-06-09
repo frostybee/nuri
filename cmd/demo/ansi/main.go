@@ -8,6 +8,7 @@ import (
 
 	"github.com/frostybee/nuri"
 	"github.com/frostybee/nuri/bundle/core"
+	"golang.org/x/term"
 )
 
 var goSnippet = `package main
@@ -77,6 +78,8 @@ var depths = []depthInfo{
 	{"8-color", nuri.ColorDepth8},
 }
 
+var interactive bool
+
 func main() {
 	ctx := context.Background()
 	h, err := nuri.New(ctx, nuri.WithFS(core.FS()))
@@ -85,6 +88,17 @@ func main() {
 		os.Exit(1)
 	}
 	defer h.Close(ctx)
+
+	fd := int(os.Stdin.Fd())
+	interactive = term.IsTerminal(fd)
+	if interactive {
+		oldState, err := term.MakeRaw(fd)
+		if err == nil {
+			defer term.Restore(fd, oldState)
+		} else {
+			interactive = false
+		}
+	}
 
 	printHeader()
 
@@ -97,10 +111,13 @@ func main() {
 			Theme: "github-dark",
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %serror:%s %v\n", red, reset, err)
+			writef("  %serror:%s %v\n", red, reset, err)
 			continue
 		}
-		fmt.Println(out)
+		writef("%s\n", out)
+	}
+	if !waitForKey() {
+		return
 	}
 
 	// --- Section 2: Color depth comparison ---
@@ -113,10 +130,13 @@ func main() {
 			ColorDepth: d.depth,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %serror:%s %v\n", red, reset, err)
+			writef("  %serror:%s %v\n", red, reset, err)
 			continue
 		}
-		fmt.Println(out)
+		writef("%s\n", out)
+	}
+	if !waitForKey() {
+		return
 	}
 
 	// --- Section 3: Theme comparison ---
@@ -129,13 +149,13 @@ func main() {
 			Theme: theme,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %serror:%s %v\n", red, reset, err)
+			writef("  %serror:%s %v\n", red, reset, err)
 			continue
 		}
-		fmt.Println(out)
+		writef("%s\n", out)
 	}
 
-	fmt.Println()
+	writef("\n")
 }
 
 const (
@@ -151,19 +171,43 @@ const (
 	white   = "\033[97m"
 )
 
+// writef writes formatted text, converting \n to \r\n in raw terminal mode.
+func writef(format string, args ...any) {
+	s := fmt.Sprintf(format, args...)
+	if interactive {
+		s = strings.ReplaceAll(s, "\n", "\r\n")
+	}
+	fmt.Print(s)
+}
+
 func printHeader() {
-	fmt.Println()
-	fmt.Printf("  %s%sNuri%s  %sANSI Output Demo%s\n", bold, cyan, reset, dim, reset)
-	fmt.Printf("  %s%s%s\n", dim, strings.Repeat("─", 40), reset)
-	fmt.Printf("  %sTextMate syntax highlighting for the terminal%s\n", dim, reset)
-	fmt.Println()
+	writef("\n")
+	writef("  %s%sNuri%s  %sANSI Output Demo%s\n", bold, cyan, reset, dim, reset)
+	writef("  %s%s%s\n", dim, strings.Repeat("─", 40), reset)
+	writef("  %sTextMate syntax highlighting for the terminal%s\n", dim, reset)
+	writef("\n")
 }
 
 func printSection(title, subtitle string) {
-	fmt.Printf("\n  %s%s%s %s  %s%s%s\n", bold, white, title, reset, dim, subtitle, reset)
-	fmt.Printf("  %s%s%s\n\n", dim, strings.Repeat("─", 50), reset)
+	writef("\n  %s%s%s %s  %s%s%s\n", bold, white, title, reset, dim, subtitle, reset)
+	writef("  %s%s%s\n\n", dim, strings.Repeat("─", 50), reset)
 }
 
 func printLabel(label string) {
-	fmt.Printf("  %s%s▸%s %s%s%s\n", dim, magenta, reset, bold, label, reset)
+	writef("  %s%s▸%s %s%s%s\n", dim, magenta, reset, bold, label, reset)
+}
+
+func waitForKey() bool {
+	if !interactive {
+		return true
+	}
+	writef("  %s%s[space]%s%s next  %s·%s  %s[q]%s%s quit%s", dim, white, reset, dim, dim, dim, white, reset, dim, reset)
+	var buf [1]byte
+	os.Stdin.Read(buf[:])
+	writef("\r  %s\r", strings.Repeat(" ", 40))
+	switch buf[0] {
+	case 'q', 'Q', 0x1b, 0x03:
+		return false
+	}
+	return true
 }

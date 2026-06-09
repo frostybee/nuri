@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuri — Feature Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+  :root {
+    --page-bg: #020110;
+    --page-fg: #f0f3f6;
+    --card-bg: #151b23;
+    --card-border: #272b33;
+    --header-bg: #020110;
+    --muted: #9198a1;
+    --accent: #71b7ff;
+    --highlight-bg: rgba(187, 128, 9, 0.15);
+    --diff-add-bg: rgba(46, 160, 67, 0.15);
+    --diff-add-gutter: #3fb950;
+    --diff-remove-bg: rgba(248, 81, 73, 0.15);
+    --diff-remove-gutter: #f85149;
+    --code-bg: #272a32;
+    --dimmed-opacity: 0.32;
+  }
+
+  html[data-theme="light"] {
+    --page-bg: #ffffff;
+    --page-fg: #1f2328;
+    --card-bg: #f6f8fa;
+    --card-border: #d0d7de;
+    --header-bg: #f6f8fa;
+    --muted: #656d76;
+    --accent: #0969da;
+    --highlight-bg: rgba(187, 128, 9, 0.12);
+    --diff-add-bg: rgba(46, 160, 67, 0.10);
+    --diff-add-gutter: #1a7f37;
+    --diff-remove-bg: rgba(248, 81, 73, 0.10);
+    --diff-remove-gutter: #cf222e;
+    --code-bg: #f6f7f9;
+    --dimmed-opacity: 0.35;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    line-height: 1.6;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--card-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  header h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-top: 0.15rem;
+  }
+
+  .theme-toggle {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--page-fg);
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+  .theme-toggle:hover { background: var(--card-border); }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--accent);
+  }
+
+  .section .desc {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .block-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+    margin-top: 0.75rem;
+  }
+
+  pre.shiki {
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    background-color: var(--code-bg) !important;
+  }
+
+   
+  html[data-theme="light"] pre.shiki.nuri-themes {
+    background-color: var(--code-bg) !important;
+    color: var(--nuri-light) !important;
+  }
+  html[data-theme="light"] pre.shiki.nuri-themes span[style],
+  html[data-theme="light"] pre.shiki.nuri-themes span[class] {
+    color: var(--nuri-light) !important;
+  }
+
+   
+  .line.highlighted {
+    display: inline-block;
+    width: 100%;
+    background: var(--highlight-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+
+  .line.diff.add {
+    display: inline-block;
+    width: 100%;
+    background: var(--diff-add-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+  .line.diff.add::before {
+    content: "+ ";
+    color: var(--diff-add-gutter);
+    font-weight: 700;
+  }
+
+  .line.diff.remove {
+    display: inline-block;
+    width: 100%;
+    background: var(--diff-remove-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+  .line.diff.remove::before {
+    content: "- ";
+    color: var(--diff-remove-gutter);
+    font-weight: 700;
+  }
+
+  pre.has-focused .line.dimmed {
+    opacity: var(--dimmed-opacity);
+    transition: opacity 0.15s;
+  }
+  pre.has-focused:hover .line.dimmed {
+    opacity: 0.8;
+  }
+  .line.focused {
+    display: inline-block;
+    width: 100%;
+    background: var(--highlight-bg);
+    margin: 0 -1.25rem;
+    padding: 0 1.25rem;
+  }
+
+   
+  pre.css-dump {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--muted);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--card-border);
+  }
+    
+  ._s_11e1782d0384aa46 { --nuri-light: #e36209; color: #ffb757 }
+._s_20dde60640fec3ad { --nuri-light: #24292e; --nuri-light-bg: #fff; background-color: #0a0c10; color: #f0f3f6 }
+._s_3b0a4e66be17d111 { --nuri-light: #6f42c1; color: #dbb7ff }
+._s_5e19b2659a7c10e2 { --nuri-light: #d73a49; color: #ff9492 }
+._s_77ee3737668270e5 { --nuri-light: #005cc5; color: #91cbff }
+._s_7c85c2b59ab4c46b { --nuri-light: #032f62; color: #addcff }
+._s_a74e84bdcf373547 { --nuri-light: #6f42c1; color: #ffb757 }
+._s_dbede69faa8b505 { --nuri-light: #24292e; color: #f0f3f6 }
+
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Nuri — Feature Demo</h1>
+    <p>TextMate-based syntax highlighting for Go</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()">&#9788; Light</button>
+</header>
+
+<main>
+  <div class="section">
+    <h2>1. Go — github-dark-high-contrast / github-light</h2>
+    <p class="desc">Basic syntax highlighting with theme toggle support.</p>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">package</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#ffb757">main</span></span>
+<span class="line"></span>
+<span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">import</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#6f42c1;color:#ffb757">fmt</span><span style="--nuri-light:#032f62;color:#addcff">"</span></span>
+<span class="line"></span>
+<span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">func</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Greet</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">name</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">fmt</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Sprintf</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">Hello, </span><span style="--nuri-light:#005cc5;color:#ff9492">%s</span><span style="--nuri-light:#032f62;color:#addcff">!</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">name</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>2. JavaScript — github-dark-high-contrast / github-light</h2>
+    <p class="desc">Different language, same theme pair.</p>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">async</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">function</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">fetchUsers</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">endpoint</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">response</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">await</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">fetch</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">endpoint</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">data</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">await</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">response</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">json</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">data</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">users</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">filter</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">u</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=&gt;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">u</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">active</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>3. Multi-Theme — CSS Variables</h2>
+    <p class="desc">Two languages rendered with dual-theme CSS variable output.</p><div class="block-label">Go</div>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">type</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#ffb757">Server</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">struct</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">Addr</span><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#d73a49;color:#ff9492">string</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">Handler</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#ffb757">http</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#ffb757">Handler</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">func</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">s </span><span style="--nuri-light:#d73a49;color:#ff9492">*</span><span style="--nuri-light:#6f42c1;color:#ffb757">Server</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">ListenAndServe</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">error</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">http</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">ListenAndServe</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">s</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">Addr</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">s</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">Handler</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre><div class="block-label">JavaScript</div>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">class</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#ffb757">EventBus</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#e36209;color:#ffb757">#listeners</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">new</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Map</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">on</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">event</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#e36209;color:#ffb757">fn</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">fns</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">this</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">#listeners</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">get</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">event</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">??</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">[</span><span style="--nuri-light:#24292e;color:#f0f3f6">]</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#24292e;color:#f0f3f6">fns</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">push</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">fn</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#005cc5;color:#91cbff">this</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">#listeners</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">set</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">event</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">fns</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>4. Decorations</h2>
+    <p class="desc">Highlighted lines, focused lines, and diff markers.</p><div class="block-label">Highlighted Lines</div>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">func</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">process</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">items</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">[</span><span style="--nuri-light:#24292e;color:#f0f3f6">]</span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">[</span><span style="--nuri-light:#24292e;color:#f0f3f6">]</span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line highlighted"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">result</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">:=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">make</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">[</span><span style="--nuri-light:#24292e;color:#f0f3f6">]</span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">0</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">len</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">items</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#d73a49;color:#ff9492">for</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">_</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">item</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">:=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">range</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">items</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line highlighted"><span style="--nuri-light:#24292e;color:#f0f3f6">		</span><span style="--nuri-light:#24292e;color:#f0f3f6">result</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">append</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">result</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">strings</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">ToUpper</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">item</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">result</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre><div class="block-label">Focused Lines</div>
+    <pre class="shiki nuri-themes dark light has-focused" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line dimmed"><span style="--nuri-light:#d73a49;color:#ff9492">function</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">middleware</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">req</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#e36209;color:#ffb757">res</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#e36209;color:#ffb757">next</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">start</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">Date</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">now</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line focused"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">res</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">on</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">'</span><span style="--nuri-light:#032f62;color:#addcff">finish</span><span style="--nuri-light:#032f62;color:#addcff">'</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=&gt;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line focused"><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">ms</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">Date</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">now</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">-</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">start</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line focused"><span style="--nuri-light:#24292e;color:#f0f3f6">    </span><span style="--nuri-light:#24292e;color:#f0f3f6">console</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">log</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">req</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">method</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">req</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#24292e;color:#f0f3f6">url</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">ms</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">+</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#032f62;color:#addcff">'</span><span style="--nuri-light:#032f62;color:#addcff">ms</span><span style="--nuri-light:#032f62;color:#addcff">'</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">}</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">next</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre><div class="block-label">Diff Lines</div>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="--nuri-light:#d73a49;color:#ff9492">func</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Connect</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">dsn</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">string</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#d73a49;color:#ff9492">*</span><span style="--nuri-light:#6f42c1;color:#ffb757">DB</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">error</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line diff add"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">db</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">err</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">:=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">sql</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Open</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">postgres</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">dsn</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line diff remove"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#24292e;color:#f0f3f6">db</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">err</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">:=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">sql</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">Open</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">mysql</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">dsn</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">	</span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">db</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">err</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>5. Transformer — Meta</h2>
+    <p class="desc">Fence meta &#34;{1,3-5}&#34; highlights lines 1, 3, 4, 5.</p>
+    <pre class="shiki nuri-themes dark light" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line highlighted"><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">config</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">host</span><span style="--nuri-light:#24292e;color:#f0f3f6">:</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">localhost</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span></span>
+<span class="line highlighted"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">port</span><span style="--nuri-light:#24292e;color:#f0f3f6">:</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">8080</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span></span>
+<span class="line highlighted"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">debug</span><span style="--nuri-light:#24292e;color:#f0f3f6">:</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">true</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span></span>
+<span class="line highlighted"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">version</span><span style="--nuri-light:#24292e;color:#f0f3f6">:</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">1.0.0</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span></span>
+<span class="line"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>6. Transformer — Notation</h2>
+    <p class="desc">Magic comments [!code &#43;&#43;], [!code highlight], etc. are stripped; their effects appear as line styles.</p>
+    <pre class="shiki nuri-themes dark light has-focused" style="--nuri-light:#24292e;--nuri-light-bg:#fff;background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line dimmed"><span style="--nuri-light:#d73a49;color:#ff9492">function</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6f42c1;color:#dbb7ff">calculate</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#e36209;color:#ffb757">a</span><span style="--nuri-light:#24292e;color:#f0f3f6">,</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#e36209;color:#ffb757">b</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">{</span></span>
+<span class="line highlighted dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">sum</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">a</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">+</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">b</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6a737d;color:#bdc4cc">//</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">product</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">a</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">*</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">b</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line focused"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">const</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#005cc5;color:#91cbff">result</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">=</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">sum</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#d73a49;color:#ff9492">+</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">product</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6a737d;color:#bdc4cc">//</span></span>
+<span class="line diff remove dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">console</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">log</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">old output</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6a737d;color:#bdc4cc">//</span></span>
+<span class="line diff add dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#24292e;color:#f0f3f6">console</span><span style="--nuri-light:#24292e;color:#f0f3f6">.</span><span style="--nuri-light:#6f42c1;color:#dbb7ff">log</span><span style="--nuri-light:#24292e;color:#f0f3f6">(</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#032f62;color:#addcff">new output</span><span style="--nuri-light:#032f62;color:#addcff">"</span><span style="--nuri-light:#24292e;color:#f0f3f6">)</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#6a737d;color:#bdc4cc">//</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">  </span><span style="--nuri-light:#d73a49;color:#ff9492">return</span><span style="--nuri-light:#24292e;color:#f0f3f6"> </span><span style="--nuri-light:#24292e;color:#f0f3f6">result</span><span style="--nuri-light:#24292e;color:#f0f3f6">;</span></span>
+<span class="line dimmed"><span style="--nuri-light:#24292e;color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>7. StyleClassMap — CSS Class Output</h2>
+    <p class="desc">Inline styles replaced with hashed classes. Extracted CSS shown below.</p><div class="block-label">Go</div>
+    <pre class="shiki nuri-themes dark light _s_20dde60640fec3ad" tabindex="0"><code><span class="line"><span class="_s_5e19b2659a7c10e2">var</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">ErrNotFound</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">=</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">errors</span><span class="_s_dbede69faa8b505">.</span><span class="_s_3b0a4e66be17d111">New</span><span class="_s_dbede69faa8b505">(</span><span class="_s_7c85c2b59ab4c46b">"</span><span class="_s_7c85c2b59ab4c46b">not found</span><span class="_s_7c85c2b59ab4c46b">"</span><span class="_s_dbede69faa8b505">)</span></span>
+<span class="line"></span>
+<span class="line"><span class="_s_5e19b2659a7c10e2">func</span><span class="_s_dbede69faa8b505"> </span><span class="_s_3b0a4e66be17d111">Lookup</span><span class="_s_dbede69faa8b505">(</span><span class="_s_11e1782d0384aa46">id</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">string</span><span class="_s_dbede69faa8b505">)</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">(</span><span class="_s_5e19b2659a7c10e2">*</span><span class="_s_a74e84bdcf373547">Record</span><span class="_s_dbede69faa8b505">,</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">error</span><span class="_s_dbede69faa8b505">)</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">{</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">	</span><span class="_s_dbede69faa8b505">r</span><span class="_s_dbede69faa8b505">,</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">ok</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">:=</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">store</span><span class="_s_dbede69faa8b505">[</span><span class="_s_dbede69faa8b505">id</span><span class="_s_dbede69faa8b505">]</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">	</span><span class="_s_5e19b2659a7c10e2">if</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">!</span><span class="_s_dbede69faa8b505">ok</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">{</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">		</span><span class="_s_5e19b2659a7c10e2">return</span><span class="_s_dbede69faa8b505"> </span><span class="_s_77ee3737668270e5">nil</span><span class="_s_dbede69faa8b505">,</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">ErrNotFound</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">	</span><span class="_s_dbede69faa8b505">}</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">	</span><span class="_s_5e19b2659a7c10e2">return</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">r</span><span class="_s_dbede69faa8b505">,</span><span class="_s_dbede69faa8b505"> </span><span class="_s_77ee3737668270e5">nil</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">}</span></span></code></pre><div class="block-label">JavaScript</div>
+    <pre class="shiki nuri-themes dark light _s_20dde60640fec3ad" tabindex="0"><code><span class="line"><span class="_s_5e19b2659a7c10e2">const</span><span class="_s_dbede69faa8b505"> </span><span class="_s_77ee3737668270e5">PI</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">=</span><span class="_s_dbede69faa8b505"> </span><span class="_s_77ee3737668270e5">3</span><span class="_s_77ee3737668270e5">.</span><span class="_s_77ee3737668270e5">14159</span><span class="_s_dbede69faa8b505">;</span></span>
+<span class="line"></span>
+<span class="line"><span class="_s_5e19b2659a7c10e2">function</span><span class="_s_dbede69faa8b505"> </span><span class="_s_3b0a4e66be17d111">circleArea</span><span class="_s_dbede69faa8b505">(</span><span class="_s_11e1782d0384aa46">r</span><span class="_s_dbede69faa8b505">)</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">{</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">  </span><span class="_s_5e19b2659a7c10e2">return</span><span class="_s_dbede69faa8b505"> </span><span class="_s_77ee3737668270e5">PI</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">*</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">r</span><span class="_s_dbede69faa8b505"> </span><span class="_s_5e19b2659a7c10e2">*</span><span class="_s_dbede69faa8b505"> </span><span class="_s_dbede69faa8b505">r</span><span class="_s_dbede69faa8b505">;</span></span>
+<span class="line"><span class="_s_dbede69faa8b505">}</span></span></code></pre>
+    <div class="block-label">Extracted CSS</div>
+    <pre class="css-dump"><code>._s_11e1782d0384aa46 { --nuri-light: #e36209; color: #ffb757 }
+._s_20dde60640fec3ad { --nuri-light: #24292e; --nuri-light-bg: #fff; background-color: #0a0c10; color: #f0f3f6 }
+._s_3b0a4e66be17d111 { --nuri-light: #6f42c1; color: #dbb7ff }
+._s_5e19b2659a7c10e2 { --nuri-light: #d73a49; color: #ff9492 }
+._s_77ee3737668270e5 { --nuri-light: #005cc5; color: #91cbff }
+._s_7c85c2b59ab4c46b { --nuri-light: #032f62; color: #addcff }
+._s_a74e84bdcf373547 { --nuri-light: #6f42c1; color: #ffb757 }
+._s_dbede69faa8b505 { --nuri-light: #24292e; color: #f0f3f6 }
+</code></pre>
+  </div>
+  <div class="section">
+    <h2>8. Custom Configuration — Constructor Options</h2>
+    <p class="desc">WithTheme, WithGrammar, WithAlias, and WithDefaults exercised in a single New() call.</p><div class="block-label">Custom Grammar (via WithGrammar &#43; WithAlias)</div>
+    <pre class="shiki dracula demo-defaults" style="background-color:#282A36;color:#F8F8F2" tabindex="0"><code><span class="line"><span style="color:#FF79C6">let</span><span style="color:#F8F8F2"> name = </span><span style="color:#F1FA8C">"</span><span style="color:#F1FA8C">world</span><span style="color:#F1FA8C">"</span></span>
+<span class="line"><span style="color:#FF79C6">set</span><span style="color:#F8F8F2"> count = </span><span style="color:#BD93F9">42</span></span>
+<span class="line"><span style="color:#FF79C6">if</span><span style="color:#F8F8F2"> count &gt; </span><span style="color:#BD93F9">10</span></span>
+<span class="line"><span style="color:#F8F8F2">  </span><span style="color:#FF79C6">print</span><span style="color:#F8F8F2"> </span><span style="color:#F1FA8C">"</span><span style="color:#F1FA8C">hello</span><span style="color:#F1FA8C">"</span></span>
+<span class="line"><span style="color:#FF79C6">end</span></span></code></pre><div class="block-label">Go — Theme from WithDefaults (dracula)</div>
+    <pre class="shiki dracula demo-defaults" style="background-color:#282A36;color:#F8F8F2" tabindex="0"><code><span class="line"><span style="color:#FF79C6">func</span><span style="color:#F8F8F2"> </span><span style="color:#50FA7B">main</span><span style="color:#F8F8F2">(</span><span style="color:#F8F8F2">)</span><span style="color:#F8F8F2"> </span><span style="color:#F8F8F2">{</span></span>
+<span class="line"><span style="color:#F8F8F2">	</span><span style="color:#F8F8F2">fmt</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">Println</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Theme from WithDefaults</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre><div class="block-label">Go — Theme overridden per-call (github-dark-high-contrast)</div>
+    <pre class="shiki github-dark-high-contrast demo-defaults" style="background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="color:#ff9492">func</span><span style="color:#f0f3f6"> </span><span style="color:#dbb7ff">main</span><span style="color:#f0f3f6">(</span><span style="color:#f0f3f6">)</span><span style="color:#f0f3f6"> </span><span style="color:#f0f3f6">{</span></span>
+<span class="line"><span style="color:#f0f3f6">	</span><span style="color:#f0f3f6">fmt</span><span style="color:#f0f3f6">.</span><span style="color:#dbb7ff">Println</span><span style="color:#f0f3f6">(</span><span style="color:#addcff">"</span><span style="color:#addcff">Theme overridden per-call</span><span style="color:#addcff">"</span><span style="color:#f0f3f6">)</span></span>
+<span class="line"><span style="color:#f0f3f6">}</span></span></code></pre>
+  </div>
+  <div class="section">
+    <h2>9. ANSI Highlighting</h2>
+    <p class="desc">Terminal output with ANSI escape codes rendered as colored HTML (lang: &#34;ansi&#34;).</p><div class="block-label">Test Runner Output</div>
+    <pre class="shiki github-dark-high-contrast" style="background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="color:#f0f3f6;font-weight:bold">Running tests...</span></span>
+<span class="line"><span style="color:#0dbc79">  PASS</span><span style="color:#f0f3f6">  TestAuth         </span><span style="color:#666666">(0.03s)</span></span>
+<span class="line"><span style="color:#0dbc79">  PASS</span><span style="color:#f0f3f6">  TestLogin        </span><span style="color:#666666">(0.12s)</span></span>
+<span class="line"><span style="color:#cd3131">  FAIL</span><span style="color:#f0f3f6">  TestAPI          </span><span style="color:#666666">(0.45s)</span></span>
+<span class="line"><span style="color:#0dbc79">  PASS</span><span style="color:#f0f3f6">  TestWebSocket    </span><span style="color:#666666">(0.08s)</span></span>
+<span class="line"><span style="color:#e5e510">  SKIP</span><span style="color:#f0f3f6">  TestIntegration  </span><span style="color:#666666">(0.00s)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#cd3131;font-weight:bold">1 failed</span><span style="color:#f0f3f6">, </span><span style="color:#0dbc79">3 passed</span><span style="color:#f0f3f6">, </span><span style="color:#e5e510">1 skipped</span></span></code></pre><div class="block-label">Build Output (with truecolor &#43; 256-color)</div>
+    <pre class="shiki github-dark-high-contrast" style="background-color:#0a0c10;color:#f0f3f6" tabindex="0"><code><span class="line"><span style="color:#11a8cd;font-weight:bold">  Compiling</span><span style="color:#f0f3f6"> nuri v0.1.0</span></span>
+<span class="line"><span style="color:#11a8cd;font-weight:bold">  Compiling</span><span style="color:#f0f3f6"> wazero v1.8.2</span></span>
+<span class="line"><span style="color:#cd3131;font-weight:bold">error</span><span style="color:#f0f3f6">: mismatched types</span></span>
+<span class="line"><span style="color:#f0f3f6">  </span><span style="color:#2472c8">--&gt;</span><span style="color:#f0f3f6"> src/engine.go:42:5</span></span>
+<span class="line"><span style="color:#f0f3f6">   </span><span style="color:#666666">|</span></span>
+<span class="line"><span style="color:#666666">42</span><span style="color:#f0f3f6"> </span><span style="color:#666666">|</span><span style="color:#f0f3f6">     return </span><span style="color:#ff8000">"invalid"</span></span>
+<span class="line"><span style="color:#f0f3f6">   </span><span style="color:#666666">|</span><span style="color:#f0f3f6">            </span><span style="color:#cd3131;font-weight:bold">^^^^^^^^^</span><span style="color:#f0f3f6"> expected int, found string</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#e5e510;font-weight:bold">warning</span><span style="color:#f0f3f6">: unused variable </span><span style="color:#ff9900">`count`</span></span>
+<span class="line"><span style="color:#f0f3f6">  </span><span style="color:#2472c8">--&gt;</span><span style="color:#f0f3f6"> src/engine.go:38:6</span></span></code></pre>
+  </div>
+</main>
+
+<footer>Generated by Nuri demo &mdash; 2026-06-08T15:19:27-04:00</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.theme-toggle');
+  if (html.dataset.theme === 'dark') {
+    html.dataset.theme = 'light';
+    btn.innerHTML = '&#9790; Dark';
+  } else {
+    html.dataset.theme = 'dark';
+    btn.innerHTML = '&#9788; Light';
+  }
+}
+</script>
+</body>
+</html>
