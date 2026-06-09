@@ -59,6 +59,29 @@ type Diagnostic struct {
 	Kind string // "timeout" | "too_long" | "panic" | "unknown_lang"
 }
 
+// ColorDepth specifies the ANSI color mode for terminal output.
+type ColorDepth int
+
+const (
+	ColorDepthTruecolor ColorDepth = 0   // 24-bit RGB (default)
+	ColorDepth256       ColorDepth = 256 // 256-color indexed
+	ColorDepth16        ColorDepth = 16  // 16-color (standard + bright)
+	ColorDepth8         ColorDepth = 8   // 8-color (standard only)
+)
+
+// CodeToANSIOptions configures a CodeToANSI call.
+type CodeToANSIOptions struct {
+	Lang  string // language name (e.g. "go", "javascript")
+	Theme string // theme name (e.g. "github-dark")
+
+	// ColorDepth sets the ANSI color mode.
+	// Zero value (ColorDepthTruecolor) uses 24-bit RGB.
+	ColorDepth ColorDepth
+
+	MaxLineLength *int // nil = use highlighter default; per-line byte-length pre-filter
+	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
+}
+
 // CodeToHTMLOptions configures a CodeToHTML call.
 type CodeToHTMLOptions struct {
 	Lang  string

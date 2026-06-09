@@ -31,6 +31,8 @@ type (
 	Diagnostic         = ast.Diagnostic
 	CodeToTokensOptions = ast.CodeToTokensOptions
 	CodeToHTMLOptions  = ast.CodeToHTMLOptions
+	CodeToANSIOptions  = ast.CodeToANSIOptions
+	ColorDepth         = ast.ColorDepth
 	LineRange          = ast.LineRange
 	StyleClassMap      = ast.StyleClassMap
 	ThemeColors        = ast.ThemeColors
@@ -38,9 +40,17 @@ type (
 
 // Re-export ast functions.
 var (
-	Range           = ast.Range
-	Lines           = ast.Lines
+	Range            = ast.Range
+	Lines            = ast.Lines
 	NewStyleClassMap = ast.NewStyleClassMap
+)
+
+// Re-export ANSI color depth constants.
+const (
+	ColorDepthTruecolor = ast.ColorDepthTruecolor
+	ColorDepth256       = ast.ColorDepth256
+	ColorDepth16        = ast.ColorDepth16
+	ColorDepth8         = ast.ColorDepth8
 )
 
 // Highlighter is the main entry point for syntax highlighting.
@@ -315,6 +325,30 @@ func (h *Highlighter) CodeToHTML(
 	}
 
 	return html, nil
+}
+
+// CodeToANSI tokenizes source code, resolves colors from the theme,
+// and renders the result as ANSI escape sequences for terminal display.
+func (h *Highlighter) CodeToANSI(
+	ctx context.Context,
+	code string,
+	opts ast.CodeToANSIOptions,
+) (string, error) {
+	result, err := h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
+		Lang:          opts.Lang,
+		Theme:         opts.Theme,
+		MaxLineLength: opts.MaxLineLength,
+		TimeoutMs:     opts.TimeoutMs,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var buf strings.Builder
+	if err := renderer.RenderANSI(&buf, result, &opts); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (h *Highlighter) buildResult(
