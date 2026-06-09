@@ -16,6 +16,19 @@ jobs:
           go-version: "1.25"
       - run: go test ./... -count=1
 
+  provenance-check:
+    name: Provenance Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Verify provenance lockfile
+        run: go run ./tools/devtool verify
+
   fixture-freshness:
     name: Fixture Freshness
     runs-on: ubuntu-latest
@@ -29,6 +42,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify provenance lockfile
+        run: go run ./tools/devtool verify
       - name: Generate fixtures
         run: go run ./tools/devtool generate
       - name: Assert fixtures unchanged

@@ -13,7 +13,7 @@ import (
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run ./tools/devtool <command>")
-		fmt.Fprintln(os.Stderr, "commands: sync, generate, all")
+		fmt.Fprintln(os.Stderr, "commands: sync, generate, lock, verify, all")
 		os.Exit(1)
 	}
 
@@ -29,14 +29,35 @@ func main() {
 			fmt.Fprintf(os.Stderr, "sync: %v\n", err)
 			os.Exit(1)
 		}
+		fmt.Println("Regenerating lockfile...")
+		if err := generateLockfile(root); err != nil {
+			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
+			os.Exit(1)
+		}
 	case "generate":
 		if err := generate(root); err != nil {
 			fmt.Fprintf(os.Stderr, "generate: %v\n", err)
 			os.Exit(1)
 		}
+	case "lock":
+		if err := generateLockfile(root); err != nil {
+			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
+			os.Exit(1)
+		}
+	case "verify":
+		fmt.Println("Verifying provenance.lock.json...")
+		if err := verifyLockfile(root); err != nil {
+			fmt.Fprintf(os.Stderr, "verify: %v\n", err)
+			os.Exit(1)
+		}
 	case "all":
 		if err := syncGrammars(root); err != nil {
 			fmt.Fprintf(os.Stderr, "sync: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Regenerating lockfile...")
+		if err := generateLockfile(root); err != nil {
+			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
 			os.Exit(1)
 		}
 		if err := generate(root); err != nil {

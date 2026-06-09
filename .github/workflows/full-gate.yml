@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify provenance lockfile
+        run: go run ./tools/devtool verify
       - name: Generate full fixtures
         run: go run ./tools/devtool generate -- --config matrix.full.config.json
       - name: Run full golden tests
