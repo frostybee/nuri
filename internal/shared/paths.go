@@ -79,3 +79,14 @@ func ThemesDir(t testing.TB) string {
 	}
 	return dir
 }
+
+// SamplesDir returns the absolute path to the submodule sample files.
+// Calls t.Skip if the submodule isn't initialized.
+func SamplesDir(t testing.TB) string {
+	t.Helper()
+	dir := filepath.Join(RepoRoot(), SubmoduleSamplesDir)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Skip("grammars-themes submodule not initialized — run: git submodule update --init")
+	}
+	return dir
+}
