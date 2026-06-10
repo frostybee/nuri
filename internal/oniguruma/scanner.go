@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"unsafe"
 )
 
 const maxResultSlots = 2 + 64*2
@@ -13,36 +14,72 @@ type Scanner struct {
 	ptr  uint32
 }
 
+// FindNextMatch searches text from pos and returns the leftmost match.
+//
+// Text upload is elided when text shares a backing array with (and is no
+// longer than) the previously uploaded slice — callers must not mutate text
+// contents between calls that pass the same backing array. The tokenizer
+// guarantees this: a line is immutable while it is being scanned, and
+// capture retokenization searches prefixes of the already-uploaded line.
 func (s *Scanner) FindNextMatch(ctx context.Context, text []byte, pos int, options SearchOptions) (*Match, error) {
 	if len(text) == 0 {
 		return nil, nil
 	}
+	inst := s.inst
 
-	txtPtr, err := s.inst.wasmAlloc(ctx, uint32(len(text)))
-	if err != nil {
-		return nil, fmt.Errorf("oniguruma: alloc text: %w", err)
+	if inst.resultPtr == 0 {
+		ptr, err := inst.wasmAlloc(ctx, maxResultSlots*4)
+		if err != nil {
+			return nil, fmt.Errorf("oniguruma: alloc result buf: %w", err)
+		}
+		inst.resultPtr = ptr
 	}
-	defer s.inst.wasmFree(ctx, txtPtr)
-	s.inst.mem.Write(txtPtr, text)
 
-	resultBufSize := uint32(maxResultSlots * 4)
-	resultPtr, err := s.inst.wasmAlloc(ctx, resultBufSize)
-	if err != nil {
-		return nil, fmt.Errorf("oniguruma: alloc result buf: %w", err)
+	// Pin check: skip the upload when text is a prefix of the live
+	// uploaded buffer. Searching a prefix of the uploaded bytes with
+	// str_len = len(text) is byte-identical to uploading the prefix.
+	pinned := len(inst.curText) > 0 &&
+		unsafe.SliceData(text) == unsafe.SliceData(inst.curText) &&
+		len(text) <= len(inst.curText)
+	if !pinned {
+		if uint32(len(text)) > inst.textCap {
+			newCap := inst.textCap * 2
+			if newCap < uint32(len(text)) {
+				newCap = uint32(len(text))
+			}
+			if newCap < 4096 {
+				newCap = 4096
+			}
+			if inst.textPtr != 0 {
+				inst.wasmFree(ctx, inst.textPtr)
+				inst.textPtr = 0
+				inst.textCap = 0
+			}
+			ptr, err := inst.wasmAlloc(ctx, newCap)
+			if err != nil {
+				inst.curText = nil
+				return nil, fmt.Errorf("oniguruma: alloc text: %w", err)
+			}
+			inst.textPtr = ptr
+			inst.textCap = newCap
+		}
+		inst.mem.Write(inst.textPtr, text)
+		inst.curText = text
 	}
-	defer s.inst.wasmFree(ctx, resultPtr)
 
-	results, err := s.inst.fnFindNextMatch.Call(ctx,
-		uint64(s.ptr),
-		uint64(txtPtr), uint64(len(text)), uint64(pos),
-		uint64(resultPtr), uint64(maxResultSlots),
-		uint64(options),
-	)
-	if err != nil {
+	stack := inst.callStack[:]
+	stack[0] = uint64(s.ptr)
+	stack[1] = uint64(inst.textPtr)
+	stack[2] = uint64(len(text))
+	stack[3] = uint64(pos)
+	stack[4] = uint64(inst.resultPtr)
+	stack[5] = uint64(maxResultSlots)
+	stack[6] = uint64(uint32(options))
+	if err := inst.fnFindNextMatch.CallWithStack(ctx, stack); err != nil {
 		return nil, fmt.Errorf("oniguruma: find_next_match call: %w", err)
 	}
 
-	numCaptures := int32(results[0])
+	numCaptures := int32(uint32(stack[0]))
 	if numCaptures < 0 {
 		if numCaptures == -1 {
 			return nil, nil
@@ -51,11 +88,13 @@ func (s *Scanner) FindNextMatch(ctx context.Context, text []byte, pos int, optio
 	}
 
 	slotsToRead := uint32(2+numCaptures*2) * 4
-	raw, ok := s.inst.mem.Read(resultPtr, slotsToRead)
+	raw, ok := inst.mem.Read(inst.resultPtr, slotsToRead)
 	if !ok {
 		return nil, fmt.Errorf("oniguruma: cannot read result buffer")
 	}
 
+	// raw is a view into WASM memory — decode immediately, never retain it
+	// across a call that can malloc.
 	patternIndex := int(int32(binary.LittleEndian.Uint32(raw[0:])))
 
 	captures := make([]Capture, numCaptures)

@@ -37,16 +37,22 @@ func (r *MatchRule) GetID() RuleID { return r.ID }
 // BeginEndRule represents a paired begin/end pattern.
 // The end pattern may contain backreferences (\1, \2, ...) to the begin
 // match's capture groups, resolved at match time by creating an EndRule.
+//
+// NeedsBeginCaptureTexts is computed at parse time: it is true when End
+// contains a \N backref or Name/ContentName contains a $ scope backref.
+// When false, ResolveBackrefs/ResolveScopeBackrefs are pure no-ops, so the
+// tokenizer skips extracting capture texts on every begin match.
 type BeginEndRule struct {
-	ID                  RuleID
-	Name                string
-	ContentName         string
-	Begin               string
-	End                 string
-	BeginCaptures       Captures
-	EndCaptures         Captures
-	Patterns            []Rule
-	ApplyEndPatternLast bool
+	ID                     RuleID
+	Name                   string
+	ContentName            string
+	Begin                  string
+	End                    string
+	BeginCaptures          Captures
+	EndCaptures            Captures
+	Patterns               []Rule
+	ApplyEndPatternLast    bool
+	NeedsBeginCaptureTexts bool
 }
 
 func (r *BeginEndRule) GetID() RuleID { return r.ID }
@@ -65,15 +71,19 @@ func (r *EndRule) GetID() RuleID { return r.ID }
 // BeginWhileRule represents a begin/while pattern pair.
 // The while pattern is tested at the start of each subsequent line;
 // the rule pops when the while condition fails.
+//
+// NeedsBeginCaptureTexts mirrors BeginEndRule: true when While contains a
+// \N backref or Name/ContentName contains a $ scope backref.
 type BeginWhileRule struct {
-	ID            RuleID
-	Name          string
-	ContentName   string
-	Begin         string
-	While         string
-	BeginCaptures Captures
-	WhileCaptures Captures
-	Patterns      []Rule
+	ID                     RuleID
+	Name                   string
+	ContentName            string
+	Begin                  string
+	While                  string
+	BeginCaptures          Captures
+	WhileCaptures          Captures
+	Patterns               []Rule
+	NeedsBeginCaptureTexts bool
 }
 
 func (r *BeginWhileRule) GetID() RuleID { return r.ID }

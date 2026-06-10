@@ -27,5 +27,9 @@ type OnigScanner interface {
 
 type OnigLib interface {
 	NewScannerCtx(ctx context.Context, patterns [][]byte) (OnigScanner, error)
+	// GetOrCreateScannerCtx returns a cached scanner for the pattern set,
+	// compiling and caching it on first use. The returned scanner is owned
+	// by the lib; callers must not Close it.
+	GetOrCreateScannerCtx(ctx context.Context, patterns [][]byte) (OnigScanner, error)
 	Close() error
 }

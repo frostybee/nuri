@@ -28,16 +28,18 @@ type extensionEntry struct {
 }
 
 type options struct {
-	grammarFS     fs.FS
-	themeFS       fs.FS
-	poolSize      int
-	maxLineLength int
-	timeoutMs     int
-	grammars      []grammarEntry
-	themes        []themeEntry
-	aliases       []aliasEntry
-	extensions    []extensionEntry
-	defaults      *ast.CodeToHTMLOptions
+	grammarFS           fs.FS
+	themeFS             fs.FS
+	poolSize            int
+	maxLineLength       int
+	timeoutMs           int
+	regexInterruption   bool
+	compilationCacheDir string
+	grammars            []grammarEntry
+	themes              []themeEntry
+	aliases             []aliasEntry
+	extensions          []extensionEntry
+	defaults            *ast.CodeToHTMLOptions
 }
 
 // Option configures a Highlighter.
@@ -65,6 +67,11 @@ func WithFS(fsys fs.FS) Option {
 
 // WithPoolSize sets the number of WASM instances in the pool.
 // Defaults to runtime.NumCPU().
+//
+// Each instance keeps a process-lifetime cache of compiled regex scanners
+// for every grammar context it has tokenized. The cache is unbounded by
+// design (Shiki/vscode-textmate never evict either), so memory footprint
+// scales with pool size × distinct grammars used.
 func WithPoolSize(n int) Option {
 	return func(o *options) { o.poolSize = n }
 }
@@ -120,8 +127,27 @@ func WithDefaults(defaults CodeToHTMLOptions) Option {
 	}
 }
 
+// WithRegexInterruption toggles WASM-level regex interruption (default true).
+// When enabled, regex execution compiled into the WASM runtime checks for
+// context cancellation, so a runaway pattern can be stopped mid-search at
+// the cost of some throughput. When disabled, only the Go-side soft per-line
+// timeout (checked between scan positions) and Oniguruma's internal match
+// stack limit bound a pathological regex.
+func WithRegexInterruption(enabled bool) Option {
+	return func(o *options) { o.regexInterruption = enabled }
+}
+
+// WithCompilationCacheDir enables an on-disk cache for the AOT-compiled
+// onig.wasm module, cutting process cold-start time (useful for CLI/SSG
+// invocations). The directory is created if needed and may be shared
+// between processes; it only grows when the embedded WASM module changes.
+func WithCompilationCacheDir(dir string) Option {
+	return func(o *options) { o.compilationCacheDir = dir }
+}
+
 func defaultOptions() options {
 	return options{
-		poolSize: runtime.NumCPU(),
+		poolSize:          runtime.NumCPU(),
+		regexInterruption: true,
 	}
 }

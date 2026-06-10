@@ -76,7 +76,13 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 		cfg.poolSize = 1
 	}
 
-	eng, err := oniguruma.NewEngine(ctx)
+	engOpts := []oniguruma.EngineOption{
+		oniguruma.WithEngineCloseOnContextDone(cfg.regexInterruption),
+	}
+	if cfg.compilationCacheDir != "" {
+		engOpts = append(engOpts, oniguruma.WithEngineCompilationCacheDir(cfg.compilationCacheDir))
+	}
+	eng, err := oniguruma.NewEngine(ctx, engOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -494,11 +500,6 @@ func (h *Highlighter) codeToTokensMulti(
 
 	nonDefaultKeys := slices.Delete(slices.Clone(keys), 0, 1)
 	for i, tokLine := range tokResult.Lines {
-		lines := splitLines([]byte(code))
-		var line []byte
-		if i < len(lines) {
-			line = lines[i]
-		}
 		for j, tok := range tokLine {
 			styles := make(map[string]ast.TokenStyle, len(nonDefaultKeys))
 			for _, k := range nonDefaultKeys {
@@ -517,7 +518,6 @@ func (h *Highlighter) codeToTokensMulti(
 					FontStyle: fontStyle,
 				}
 			}
-			_ = line
 			result.Tokens[i][j].ThemeStyles = styles
 		}
 	}
@@ -625,13 +625,24 @@ func (h *Highlighter) LoadedThemes() []string {
 	return h.reg.LoadedThemes()
 }
 
+// splitLines splits code into lines, each including its trailing \n (the
+// final line keeps whatever it has). Lines are views into code — zero
+// copies; callers never mutate line bytes.
 func splitLines(code []byte) [][]byte {
-	lines := bytes.Split(code, []byte("\n"))
-	for i := 0; i < len(lines)-1; i++ {
-		lines[i] = append(lines[i], '\n')
+	n := bytes.Count(code, []byte{'\n'})
+	if len(code) > 0 && code[len(code)-1] != '\n' {
+		n++
 	}
-	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
-		lines = lines[:len(lines)-1]
+	lines := make([][]byte, 0, n)
+	start := 0
+	for i, b := range code {
+		if b == '\n' {
+			lines = append(lines, code[start:i+1])
+			start = i + 1
+		}
+	}
+	if start < len(code) {
+		lines = append(lines, code[start:])
 	}
 	return lines
 }

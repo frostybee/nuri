@@ -121,6 +121,8 @@ func parseRule(raw rawRule, ids *idCounter) (Rule, error) {
 			BeginCaptures: beginCaps,
 			WhileCaptures: whileCaps,
 			Patterns:      children,
+			NeedsBeginCaptureTexts: hasBackrefMarker(raw.While) ||
+				hasScopeBackrefMarker(raw.Name) || hasScopeBackrefMarker(raw.ContentName),
 		}, nil
 
 	case raw.Begin != "":
@@ -146,6 +148,8 @@ func parseRule(raw rawRule, ids *idCounter) (Rule, error) {
 			EndCaptures:         endCaps,
 			Patterns:            children,
 			ApplyEndPatternLast: bool(raw.ApplyEndPatternLast),
+			NeedsBeginCaptureTexts: hasBackrefMarker(raw.End) ||
+				hasScopeBackrefMarker(raw.Name) || hasScopeBackrefMarker(raw.ContentName),
 		}, nil
 
 	case len(raw.Patterns) > 0:

@@ -20,7 +20,7 @@ type captureContext struct {
 	onigLib    oniguruma.OnigLib
 	resolver   grammar.GrammarResolver
 	injections []grammar.Injection
-	cache      *scannerCache
+	memo       *compileMemo
 	deadline   time.Time
 }
 
@@ -54,6 +54,10 @@ func handleCaptures(
 		endPos int
 	}
 	var localStack []localFrame
+
+	// Capture texts are extracted at most once per handleCaptures call,
+	// and only when some capture name actually contains a $ backref.
+	var captureTexts []string
 
 	for i := 0; i < len(captures); i++ {
 		key := strconv.Itoa(i)
@@ -92,8 +96,10 @@ func handleCaptures(
 			captureScopes = localStack[len(localStack)-1].scopes
 		}
 		resolvedCRName := cr.Name
-		if resolvedCRName != "" && cc != nil {
-			captureTexts := extractCaptureTexts(captures, cc.line)
+		if resolvedCRName != "" && cc != nil && strings.ContainsRune(resolvedCRName, '$') {
+			if captureTexts == nil {
+				captureTexts = extractCaptureTexts(captures, cc.line)
+			}
 			resolvedCRName = grammar.ResolveScopeBackrefs(resolvedCRName, captureTexts)
 		}
 		if resolvedCRName != "" {
@@ -109,7 +115,7 @@ func handleCaptures(
 			if resolvedCRName != "" {
 				retokScopes = appendScopes(retokScopes, resolvedCRName)
 			}
-			retokenizeCapture(cc, cr.Patterns, retokScopes, c.Start, c.End, builder)
+			retokenizeCapture(cc, cr, retokScopes, c.Start, c.End, builder)
 			continue
 		}
 
@@ -140,7 +146,7 @@ func handleCaptures(
 // absolute offsets) and calls tokenizeLine starting at captureStart.
 func retokenizeCapture(
 	cc *captureContext,
-	patterns []grammar.Rule,
+	cr *grammar.CaptureRule,
 	scopes []string,
 	captureStart, captureEnd int,
 	builder *lineTokenBuilder,
@@ -155,16 +161,15 @@ func retokenizeCapture(
 
 	// Use a CollectionRule as the root so getActivePatterns returns
 	// the capture's patterns, while cc.g provides repository resolution.
-	captureRoot := &grammar.CollectionRule{
-		ID:       grammar.InvalidRuleID,
-		Patterns: patterns,
-	}
+	// The root comes from the memo so its pointer is stable across calls —
+	// otherwise every retokenization would miss the compile memo.
+	captureRoot := cc.memo.captureRoot(cr)
 	scopeName := strings.Join(scopes, " ")
 	tempState := newStateStack(captureRoot, scopeName)
 
 	tokens, _, _, err := tokenizeLine(
 		cc.ctx, truncatedLine, cc.g, cc.onigLib,
-		tempState, cc.resolver, nil, cc.cache, captureStart, false, time.Time{},
+		tempState, cc.resolver, nil, cc.memo, captureStart, false, time.Time{},
 	)
 	if err != nil || len(tokens) == 0 {
 		builder.produce(captureEnd, scopes)

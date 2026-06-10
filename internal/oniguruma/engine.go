@@ -13,8 +13,47 @@ type Engine struct {
 	compiled wazero.CompiledModule
 }
 
-func NewEngine(ctx context.Context) (*Engine, error) {
-	cfg := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
+type engineConfig struct {
+	closeOnContextDone  bool
+	compilationCacheDir string
+}
+
+// EngineOption configures NewEngine.
+type EngineOption func(*engineConfig)
+
+// WithEngineCloseOnContextDone toggles wazero's context-interruption support
+// (compiled-in checkpoints + per-call watchdog when the caller's context is
+// cancellable). Default true. Turning it off removes the interruption
+// overhead but means a runaway regex cannot be stopped mid-search — the
+// Go-side soft per-line timeout still applies between scan positions, and
+// Oniguruma's match stack limit (set in onig_scanner_init) still bounds
+// runaway backtracking in-WASM.
+func WithEngineCloseOnContextDone(enabled bool) EngineOption {
+	return func(c *engineConfig) { c.closeOnContextDone = enabled }
+}
+
+// WithEngineCompilationCacheDir enables wazero's on-disk compilation cache,
+// skipping the AOT compile of onig.wasm (~470KB) on process cold start.
+func WithEngineCompilationCacheDir(dir string) EngineOption {
+	return func(c *engineConfig) { c.compilationCacheDir = dir }
+}
+
+func NewEngine(ctx context.Context, opts ...EngineOption) (*Engine, error) {
+	ecfg := engineConfig{closeOnContextDone: true}
+	for _, o := range opts {
+		o(&ecfg)
+	}
+
+	// wazero.NewRuntimeConfig auto-selects the compiler backend on
+	// amd64/arm64 (interpreter elsewhere) — kept auto for portability.
+	cfg := wazero.NewRuntimeConfig().WithCloseOnContextDone(ecfg.closeOnContextDone)
+	if ecfg.compilationCacheDir != "" {
+		cache, err := wazero.NewCompilationCacheWithDir(ecfg.compilationCacheDir)
+		if err != nil {
+			return nil, fmt.Errorf("oniguruma: compilation cache: %w", err)
+		}
+		cfg = cfg.WithCompilationCache(cache)
+	}
 	rt := wazero.NewRuntimeWithConfig(ctx, cfg)
 
 	_, err := rt.NewHostModuleBuilder("env").
@@ -53,6 +92,7 @@ func (e *Engine) newInstance(ctx context.Context) (*instance, error) {
 	inst := &instance{
 		module:         mod,
 		mem:            mod.Memory(),
+		scanners:       make(map[uint64][]cachedScanner),
 		fnMalloc:       mod.ExportedFunction("malloc"),
 		fnFree:         mod.ExportedFunction("free"),
 		fnInit:         mod.ExportedFunction("onig_scanner_init"),

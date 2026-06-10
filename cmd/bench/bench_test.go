@@ -406,6 +406,53 @@ func BenchmarkConcurrent(b *testing.B) {
 	}
 }
 
+// BenchmarkRegexInterruption measures the cost of WASM-level context
+// interruption (WithRegexInterruption, default on) — the evidence required
+// before any future default flip.
+func BenchmarkRegexInterruption(b *testing.B) {
+	ctx := context.Background()
+
+	modes := []struct {
+		name    string
+		enabled bool
+	}{
+		{"On", true},
+		{"Off", false},
+	}
+
+	for _, mode := range modes {
+		h, err := nuri.New(ctx,
+			nuri.WithGrammarFS(os.DirFS(shared.GrammarsDir(b))),
+			nuri.WithThemeFS(os.DirFS(shared.ThemesDir(b))),
+			nuri.WithPoolSize(1),
+			nuri.WithRegexInterruption(mode.enabled),
+		)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.Cleanup(func() { h.Close(ctx) })
+
+		for _, tc := range []benchInput{
+			{"Go", "go", benchGoCode},
+			{"TypeScript", "typescript", benchTSCode},
+		} {
+			b.Run(mode.name+"/"+tc.name, func(b *testing.B) {
+				b.SetBytes(int64(len(tc.code)))
+				b.ResetTimer()
+				for b.Loop() {
+					_, err := h.CodeToHTML(ctx, tc.code, nuri.CodeToHTMLOptions{
+						Lang:  tc.lang,
+						Theme: "github-dark",
+					})
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	}
+}
+
 func BenchmarkDetectLanguage(b *testing.B) {
 	h := newBenchHighlighter(b)
 

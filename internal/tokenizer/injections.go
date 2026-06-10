@@ -42,16 +42,16 @@ func collectInjections(g *grammar.Grammar, resolver grammar.GrammarResolver) []g
 }
 
 // matchInjections finds the best injection match for the current scope stack.
+// Compilation is memoized per injection index; selector matching stays
+// per-position because it depends on the live scope stack.
 func matchInjections(
 	ctx context.Context,
-	onigLib oniguruma.OnigLib,
 	injections []grammar.Injection,
 	g *grammar.Grammar,
 	state *StateStack,
 	line []byte,
 	pos int,
-	resolver grammar.GrammarResolver,
-	cache *scannerCache,
+	memo *compileMemo,
 	options oniguruma.SearchOptions,
 ) (*matchResult, grammar.Priority, error) {
 	if len(injections) == 0 {
@@ -63,7 +63,8 @@ func matchInjections(
 	var bestPriority grammar.Priority
 	bestStart := len(line) + 1
 
-	for _, inj := range injections {
+	for i := range injections {
+		inj := &injections[i]
 		if inj.Selector == nil {
 			continue
 		}
@@ -72,20 +73,12 @@ func matchInjections(
 			continue
 		}
 
-		var rules []grammar.Rule
-		switch r := inj.Rule.(type) {
-		case *grammar.CollectionRule:
-			rules = r.Patterns
-		default:
-			rules = []grammar.Rule{inj.Rule}
-		}
-
-		compiled, err := grammar.CompilePatterns(rules, g, g.Repository, nil, resolver)
-		if err != nil || len(compiled.Rules) == 0 {
+		entry := memo.getOrCompileInjection(ctx, i, inj, g)
+		if entry.err != nil || len(entry.rules) == 0 {
 			continue
 		}
 
-		mr, err := findNextMatch(ctx, onigLib, compiled, line, pos, cache, options)
+		mr, err := findNextMatch(ctx, entry, line, pos, options)
 		if err != nil || mr == nil {
 			continue
 		}

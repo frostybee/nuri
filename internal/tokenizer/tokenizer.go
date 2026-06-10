@@ -45,8 +45,7 @@ func Tokenize(
 		Lines: make([][]Token, 0, len(lines)),
 	}
 
-	cache := newScannerCache()
-	defer cache.closeAll()
+	memo := newCompileMemo(onigLib, res)
 
 	state := newStateStack(nil, g.ScopeName)
 
@@ -96,7 +95,7 @@ func Tokenize(
 				panic("test panic on line")
 			}
 			tokens, newState, stoppedEarly, lineErr = tokenizeLine(
-				ctx, line, g, onigLib, state, res, injections, cache, 0, i == 0, deadline,
+				ctx, line, g, onigLib, state, res, injections, memo, 0, i == 0, deadline,
 			)
 		}()
 
@@ -121,15 +120,24 @@ func Tokenize(
 	return result, nil
 }
 
+// splitLines splits code into lines, each including its trailing \n (the
+// final line keeps whatever it has). Lines are views into code — zero
+// copies; callers never mutate line bytes.
 func splitLines(code []byte) [][]byte {
-	lines := bytes.Split(code, []byte("\n"))
-	// Re-add the newline to each line except the last
-	for i := 0; i < len(lines)-1; i++ {
-		lines[i] = append(lines[i], '\n')
+	n := bytes.Count(code, []byte{'\n'})
+	if len(code) > 0 && code[len(code)-1] != '\n' {
+		n++
 	}
-	// Remove trailing empty line if present
-	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
-		lines = lines[:len(lines)-1]
+	lines := make([][]byte, 0, n)
+	start := 0
+	for i, b := range code {
+		if b == '\n' {
+			lines = append(lines, code[start:i+1])
+			start = i + 1
+		}
+	}
+	if start < len(code) {
+		lines = append(lines, code[start:])
 	}
 	return lines
 }

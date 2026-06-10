@@ -224,6 +224,20 @@ func resolveCrossGrammar(include string, resolver GrammarResolver) (resolveResul
 
 var backrefRegexp = regexp.MustCompile(`\\(\d)`)
 
+// hasBackrefMarker reports whether ResolveBackrefs would do anything to
+// pattern. Computed once at parse time so the tokenizer can skip capture
+// text extraction for the common no-backref case.
+func hasBackrefMarker(pattern string) bool {
+	return backrefRegexp.MatchString(pattern)
+}
+
+// hasScopeBackrefMarker reports whether ResolveScopeBackrefs could do
+// anything to name. ContainsRune is conservative (a bare $ never resolves)
+// but errs only toward extracting texts that turn out unused.
+func hasScopeBackrefMarker(name string) bool {
+	return strings.ContainsRune(name, '$')
+}
+
 // ResolveBackrefs substitutes backreferences (\1, \2, ...) in an end/while
 // pattern with the text captured by the begin match. The captured text is
 // escaped to be used as a literal in a regex.

@@ -2,6 +2,7 @@ package tokenizer
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/frostybee/nuri/internal/grammar"
@@ -16,7 +17,7 @@ func tokenizeLine(
 	state *StateStack,
 	resolver grammar.GrammarResolver,
 	injections []grammar.Injection,
-	cache *scannerCache,
+	memo *compileMemo,
 	startPos int,
 	isFirstLine bool,
 	deadline time.Time,
@@ -40,7 +41,7 @@ func tokenizeLine(
 		onigLib:    onigLib,
 		resolver:   resolver,
 		injections: injections,
-		cache:      cache,
+		memo:       memo,
 		deadline:   deadline,
 	}
 
@@ -53,7 +54,7 @@ func tokenizeLine(
 
 	// Phase A: check while conditions (only for top-level calls, not retokenization)
 	if startPos == 0 {
-		wcr := checkWhileConditions(ctx, line, isFirstLine, g, onigLib, state, builder, cache, cc)
+		wcr := checkWhileConditions(ctx, line, isFirstLine, g, onigLib, state, builder, memo, cc)
 		state = wcr.state
 		startPos = wcr.linePos
 		anchorPosition = wcr.anchorPosition
@@ -70,36 +71,22 @@ loop:
 			return builder.finish(), state, true, nil
 		}
 
+		top := state.top()
 		activeRules, endRule := getActivePatterns(state, g)
 
 		compileG := g
-		if top := state.top(); top.ContentGrammar != nil {
+		if top.ContentGrammar != nil {
 			compileG = top.ContentGrammar
 		}
-		compiled, err := grammar.CompilePatterns(activeRules, compileG, compileG.Repository, nil, resolver)
-		if err != nil {
-			break
-		}
-
-		if endRule != nil {
-			endCR := grammar.CompiledRule{
-				Pattern: []byte(endRule.EndPattern),
-				Rule:    endRule,
-			}
-			if endRule.Parent != nil && endRule.Parent.ApplyEndPatternLast {
-				compiled.Rules = append(compiled.Rules, endCR)
-			} else {
-				compiled.Rules = append([]grammar.CompiledRule{endCR}, compiled.Rules...)
-			}
-		}
+		entry := memo.getOrCompile(ctx, top.Rule, activeRules, compileG, endRule)
 
 		searchOpts := computeSearchOptions(isFirstLine, pos, anchorPosition)
-		mr, err := findNextMatch(ctx, onigLib, compiled, scanLine, pos, cache, searchOpts)
+		mr, err := findNextMatch(ctx, entry, scanLine, pos, searchOpts)
 		if err != nil {
 			break
 		}
 
-		injMatch, injPriority, injErr := matchInjections(ctx, onigLib, injections, g, state, scanLine, pos, resolver, cache, searchOpts)
+		injMatch, injPriority, injErr := matchInjections(ctx, injections, g, state, scanLine, pos, memo, searchOpts)
 		if injErr != nil {
 			break
 		}
@@ -140,6 +127,11 @@ loop:
 
 		switch rule := mr.rule.(type) {
 		case *grammar.EndRule:
+			// Under memo hits, mr.rule may be an equivalent EndRule cached
+			// from the frame that filled the entry (same EndPattern, same
+			// Parent, same EndCaptures map). The live frame's EndRule is
+			// authoritative — substitute it to make that invariant explicit.
+			rule = state.top().EndRule
 			poppedFrame := *state.top()
 			handleEndRule(rule, mr.match, state, builder, cc)
 			anchorPosition = poppedFrame.AnchorPosition
@@ -241,7 +233,9 @@ func captureContextForGrammar(cc *captureContext, ruleGrammar *grammar.Grammar) 
 }
 
 func resolveScopeName(name string, captures []oniguruma.Capture, line []byte) string {
-	if name == "" {
+	// ResolveScopeBackrefs is a pure no-op without a $ marker — skip the
+	// capture-text extraction entirely in that (overwhelmingly common) case.
+	if name == "" || !strings.ContainsRune(name, '$') {
 		return name
 	}
 	captureTexts := extractCaptureTexts(captures, line)
@@ -279,7 +273,12 @@ func handleBeginRule(
 	cc *captureContext,
 	ruleGrammar *grammar.Grammar,
 ) {
-	captureTexts := extractCaptureTexts(match.Captures, line)
+	// ResolveBackrefs/ResolveScopeBackrefs are pure no-ops without markers
+	// (flag computed at parse time), so extraction is skipped harmlessly.
+	var captureTexts []string
+	if rule.NeedsBeginCaptureTexts {
+		captureTexts = extractCaptureTexts(match.Captures, line)
+	}
 
 	// Resolve scope names against captures
 	resolvedName := grammar.ResolveScopeBackrefs(rule.Name, captureTexts)
@@ -347,7 +346,11 @@ func handleBeginWhileRule(
 	cc *captureContext,
 	ruleGrammar *grammar.Grammar,
 ) {
-	captureTexts := extractCaptureTexts(match.Captures, line)
+	// Same parse-time gating as handleBeginRule.
+	var captureTexts []string
+	if rule.NeedsBeginCaptureTexts {
+		captureTexts = extractCaptureTexts(match.Captures, line)
+	}
 
 	resolvedName := grammar.ResolveScopeBackrefs(rule.Name, captureTexts)
 	resolvedContentName := grammar.ResolveScopeBackrefs(rule.ContentName, captureTexts)
@@ -393,7 +396,7 @@ func checkWhileConditions(
 	onigLib oniguruma.OnigLib,
 	state *StateStack,
 	builder *lineTokenBuilder,
-	cache *scannerCache,
+	memo *compileMemo,
 	cc *captureContext,
 ) whileCheckResult {
 	linePos := 0
@@ -403,9 +406,10 @@ func checkWhileConditions(
 	}
 
 	// vscode-textmate appends "\n" before tokenizing, so while-condition
-	// patterns like ^[\t ]*$ can match after the content newline. We do
-	// the same for the while-check scanner input only.
-	whileScanLine := append(line[:len(line):len(line)], '\n')
+	// patterns like ^[\t ]*$ can match after the content newline. cc.line
+	// is exactly that (the caller's scanLine) — reuse it instead of
+	// duplicating the bytes, which also keeps the upload pin warm.
+	whileScanLine := cc.line
 
 	// Collect while-rule frame indices from bottom to top
 	var whileIndices []int
@@ -419,15 +423,10 @@ func checkWhileConditions(
 	for _, idx := range whileIndices {
 		wr := state.frames[idx].WhileRule
 
-		compiled := &grammar.CompileResult{
-			Rules: []grammar.CompiledRule{{
-				Pattern: []byte(wr.WhilePattern),
-				Rule:    wr,
-			}},
-		}
+		entry := memo.getOrCompileWhile(ctx, wr)
 
 		whileOpts := computeSearchOptions(isFirstLine, linePos, anchorPosition)
-		mr, err := findNextMatch(ctx, onigLib, compiled, whileScanLine, linePos, cache, whileOpts)
+		mr, err := findNextMatch(ctx, entry, whileScanLine, linePos, whileOpts)
 		if err != nil || mr == nil {
 			// While condition failed — pop back to this frame's parent
 			for state.depth() > idx {
