@@ -14,7 +14,32 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - run: go test ./... -count=1
+      # internal/fidelity is excluded here: known-incomplete grammars keep it
+      # red by design until they reach 100%; it has dedicated workflows
+      # (full-gate.yml, nightly.yml).
+      - run: go test -count=1 $(go list ./... | grep -v internal/fidelity)
+
+  race:
+    name: Race Detector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      # Race detection needs CGO (unavailable on the no-toolchain dev
+      # machines this library targets) — this job is the project's race
+      # coverage. Submodules give the root-package and theme tests real
+      # grammars/themes instead of skipping.
+      - name: Tests under race detector
+        run: go test -race -count=1 $(go list ./... | grep -v internal/fidelity)
+      # Drives CodeToTokens/CodeToHTML/CodeToANSI through a 4-instance pool
+      # with RunParallel — the strongest concurrent exercise of the
+      # per-instance scanner/FFI caches.
+      - name: Concurrent benchmark under race detector
+        run: go test -race -run '^$' -bench BenchmarkConcurrent -benchtime=1x ./cmd/bench/
 
   provenance-check:
     name: Provenance Verification
