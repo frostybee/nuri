@@ -65,13 +65,18 @@ func WithFS(fsys fs.FS) Option {
 	}
 }
 
-// WithPoolSize sets the number of WASM instances in the pool.
+// WithPoolSize sets the maximum number of WASM instances in the pool.
 // Defaults to runtime.NumCPU().
 //
-// Each instance keeps a process-lifetime cache of compiled regex scanners
-// for every grammar context it has tokenized. The cache is unbounded by
-// design (Shiki/vscode-textmate never evict either), so memory footprint
-// scales with pool size × distinct grammars used.
+// Instances are created lazily on demand, and the pool is LIFO: a borrow
+// returns the most-recently-used instance. Each instance keeps a
+// process-lifetime cache of compiled regex scanners for every grammar
+// context it has tokenized (unbounded by design — Shiki/vscode-textmate
+// never evict either), so a sequential workload keeps reusing one warm
+// instance, and a workload with W concurrent tokenizations keeps a warm
+// working set of W instances. Memory scales with instances actually
+// created × distinct grammars used — sizing above your expected
+// concurrency costs nothing until that concurrency materializes.
 func WithPoolSize(n int) Option {
 	return func(o *options) { o.poolSize = n }
 }

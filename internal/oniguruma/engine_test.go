@@ -2,8 +2,10 @@ package oniguruma
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
+	"time"
 )
 
 var testEngine *Engine
@@ -619,5 +621,193 @@ func assertCap(t *testing.T, captures []Capture, group, wantStart, wantEnd int) 
 	got := captures[group]
 	if got.Start != wantStart || got.End != wantEnd {
 		t.Errorf("group %d: got [%d:%d], want [%d:%d]", group, got.Start, got.End, wantStart, wantEnd)
+	}
+}
+
+func TestPoolLIFOOrder(t *testing.T) {
+	ctx := context.Background()
+	pool, err := NewPool(ctx, testEngine, 2)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close(ctx)
+
+	inst1, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get 1: %v", err)
+	}
+	inst2, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get 2: %v", err)
+	}
+
+	pool.Put(inst1)
+	pool.Put(inst2)
+
+	// LIFO: the most recently returned instance comes back first.
+	got, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get 3: %v", err)
+	}
+	if got != inst2 {
+		t.Error("expected LIFO order: Get should return the most recently Put instance")
+	}
+	pool.Put(got)
+}
+
+func TestPoolLazyCreation(t *testing.T) {
+	ctx := context.Background()
+	pool, err := NewPool(ctx, testEngine, 4)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close(ctx)
+
+	pool.mu.Lock()
+	created := len(pool.all)
+	pool.mu.Unlock()
+	if created != 0 {
+		t.Fatalf("NewPool created %d instances; want 0 (lazy)", created)
+	}
+
+	inst, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	pool.mu.Lock()
+	created = len(pool.all)
+	pool.mu.Unlock()
+	if created != 1 {
+		t.Errorf("after one Get: %d instances created; want 1", created)
+	}
+	pool.Put(inst)
+}
+
+func TestPoolGetCtxCancelled(t *testing.T) {
+	ctx := context.Background()
+	pool, err := NewPool(ctx, testEngine, 1)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close(ctx)
+
+	// Hold the only instance so the next Get must wait on the semaphore.
+	inst, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	_, err = pool.Get(cancelled)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Get with cancelled ctx: got %v, want context.Canceled", err)
+	}
+	pool.Put(inst)
+}
+
+func TestPoolGetAfterClose(t *testing.T) {
+	ctx := context.Background()
+	pool, err := NewPool(ctx, testEngine, 2)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	if err := pool.Close(ctx); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	_, err = pool.Get(ctx)
+	if err == nil {
+		t.Fatal("Get after Close: expected error, got instance")
+	}
+}
+
+func TestPoolGetCreateFailureReturnsToken(t *testing.T) {
+	ctx := context.Background()
+
+	// A private, already-closed engine makes newInstance fail.
+	eng, err := NewEngine(ctx)
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+	eng.Close(ctx)
+
+	pool, err := NewPool(ctx, eng, 1)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close(ctx)
+
+	if _, err := pool.Get(ctx); err == nil {
+		t.Fatal("Get with closed engine: expected creation error")
+	}
+
+	// If Get leaked its semaphore token on the failure path, this second Get
+	// would block until the deadline instead of failing fast on creation.
+	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err = pool.Get(bounded)
+	if err == nil {
+		t.Fatal("second Get: expected creation error")
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("second Get blocked on the semaphore: token leaked by the failure path")
+	}
+}
+
+func TestPoolConcurrentDoWithPanics(t *testing.T) {
+	ctx := context.Background()
+	pool, err := NewPool(ctx, testEngine, 3)
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close(ctx)
+
+	var wg sync.WaitGroup
+	for g := 0; g < 12; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			for i := 0; i < 5; i++ {
+				panicking := (g+i)%3 == 0
+				err := pool.Do(ctx, func(lib OnigLib) error {
+					if panicking {
+						panic("test panic")
+					}
+					scanner, err := lib.GetOrCreateScannerCtx(ctx, [][]byte{[]byte(`\w+`)})
+					if err != nil {
+						return err
+					}
+					_, err = scanner.FindNextMatchCtx(ctx, []byte("hello"), 0, SearchOptionNone)
+					return err
+				})
+				if panicking && err == nil {
+					t.Error("Do with panicking fn: expected error")
+				}
+				if !panicking && err != nil {
+					t.Errorf("Do: %v", err)
+				}
+			}
+		}(g)
+	}
+	wg.Wait()
+
+	// The pool must remain fully usable after the panic/swap churn.
+	err = pool.Do(ctx, func(lib OnigLib) error {
+		scanner, err := lib.GetOrCreateScannerCtx(ctx, [][]byte{[]byte(`world`)})
+		if err != nil {
+			return err
+		}
+		m, err := scanner.FindNextMatchCtx(ctx, []byte("hello world"), 0, SearchOptionNone)
+		if err != nil {
+			return err
+		}
+		if m == nil {
+			return errors.New("expected a match")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Do after churn: %v", err)
 	}
 }
