@@ -56,6 +56,12 @@ type TokenSettings struct {
 type TokenColor struct {
 	Scopes   []string
 	Settings TokenSettings
+
+	// compiled holds the pre-split form of Scopes, populated by Parse.
+	// Hand-built TokenColor values leave it nil and Match falls back to
+	// per-call selector parsing; a per-selector source check in the matcher
+	// keeps post-Parse edits to Scopes correct.
+	compiled []compiledSelector
 }
 
 // Theme represents a parsed VS Code color theme.
@@ -101,7 +107,8 @@ func Parse(data []byte) (*Theme, error) {
 			continue
 		}
 		t.TokenColors = append(t.TokenColors, TokenColor{
-			Scopes: scopes,
+			Scopes:   scopes,
+			compiled: compileSelectors(scopes),
 			Settings: TokenSettings{
 				Foreground: rtc.Settings.Foreground,
 				Background: rtc.Settings.Background,

@@ -8,7 +8,7 @@ import (
 	"github.com/frostybee/nuri/internal/shared"
 )
 
-func loadTestTheme(t *testing.T, name string) *Theme {
+func loadTestTheme(t testing.TB, name string) *Theme {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(shared.ThemesDir(t), name+".json"))
 	if err != nil {
