@@ -14,6 +14,16 @@ type CodeToTokensOptions struct {
 	Lang  string // language name (e.g. "go", "javascript")
 	Theme string // theme name (e.g. "github-dark")
 
+	// Themes enables multi-theme mode: key → theme name
+	// (e.g. {"light": "github-light", "dark": "github-dark"}).
+	// The code is tokenized once and every theme's style is resolved from
+	// the same token stream. The lexicographically first key is the default
+	// theme (its style fills ThemedToken.Color/BgColor/FontStyle); the other
+	// keys populate ThemedToken.ThemeStyles and TokensResult.ThemeFG/ThemeBG/
+	// ThemeNames. When non-empty, Theme is ignored.
+	// Mirrors CodeToHTMLOptions.Themes.
+	Themes map[string]string
+
 	MaxLineLength *int // nil = use highlighter default; per-line byte-length pre-filter
 	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
 }

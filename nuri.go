@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -166,12 +165,18 @@ func (h *Highlighter) Close(ctx context.Context) error {
 }
 
 // CodeToTokens tokenizes source code and resolves each token's color
-// from the specified theme.
+// from the specified theme. When opts.Themes is non-empty the code is
+// tokenized once and every theme is resolved from the same token stream
+// (opts.Theme is ignored); see CodeToTokensOptions.Themes.
 func (h *Highlighter) CodeToTokens(
 	ctx context.Context,
 	code string,
 	opts ast.CodeToTokensOptions,
 ) (*ast.TokensResult, error) {
+	if len(opts.Themes) > 0 {
+		return h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes, opts.MaxLineLength, opts.TimeoutMs)
+	}
+
 	thm, err := h.reg.GetTheme(opts.Theme)
 	if err != nil {
 		return nil, err
@@ -325,7 +330,7 @@ func (h *Highlighter) CodeToHTML(
 
 	var result *ast.TokensResult
 	var err error
-	if opts.Themes != nil {
+	if len(opts.Themes) > 0 { // len, not nil: an empty map must not enter the multi path
 		result, err = h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes, opts.MaxLineLength, opts.TimeoutMs)
 	} else {
 		result, err = h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
@@ -386,6 +391,25 @@ func (h *Highlighter) CodeToANSI(
 	return buf.String(), nil
 }
 
+// resolveStyle resolves a token's style against one theme, applying the
+// default-foreground and font-style-none fallbacks.
+func resolveStyle(thm *theme.Theme, scopes []string) ast.TokenStyle {
+	ts := thm.Match(scopes)
+	color := ts.Foreground
+	if color == "" {
+		color = thm.DefaultForeground
+	}
+	fontStyle := ts.FontStyle
+	if fontStyle == theme.FontStyleNotSet {
+		fontStyle = theme.FontStyleNone
+	}
+	return ast.TokenStyle{
+		Color:     color,
+		BgColor:   ts.Background,
+		FontStyle: fontStyle,
+	}
+}
+
 func (h *Highlighter) buildResult(
 	code string,
 	tokResult *tokenizer.TokenizeResult,
@@ -413,21 +437,79 @@ func (h *Highlighter) buildResult(
 			if content == "" {
 				continue
 			}
-			ts := thm.Match(tok.Scopes)
-			color := ts.Foreground
-			if color == "" {
-				color = thm.DefaultForeground
-			}
-			fontStyle := ts.FontStyle
-			if fontStyle == theme.FontStyleNotSet {
-				fontStyle = theme.FontStyleNone
-			}
+			ts := resolveStyle(thm, tok.Scopes)
 			themed = append(themed, ast.ThemedToken{
 				Content:   content,
-				Color:     color,
-				BgColor:   ts.Background,
-				FontStyle: fontStyle,
+				Color:     ts.Color,
+				BgColor:   ts.BgColor,
+				FontStyle: ts.FontStyle,
 				Scopes:    tok.Scopes,
+			})
+		}
+		result.Tokens[i] = themed
+	}
+
+	for _, d := range tokResult.Diagnostics {
+		result.Diagnostics = append(result.Diagnostics, ast.Diagnostic{
+			Line: d.Line,
+			Kind: d.Kind,
+		})
+	}
+
+	return result
+}
+
+// buildResultMulti is buildResult's multi-theme sibling: it resolves the
+// default theme AND every non-default theme for each token in the same pass.
+// Building ThemeStyles here — under the same empty-content skip that decides
+// which tokens exist at all — is what keeps styles aligned with tokens; a
+// separate indexed pass over the raw tokenizer lines desyncs as soon as a
+// token is skipped.
+func (h *Highlighter) buildResultMulti(
+	code string,
+	tokResult *tokenizer.TokenizeResult,
+	thms map[string]*theme.Theme,
+	keys []string,
+	defaultKey string,
+) *ast.TokensResult {
+	defaultThm := thms[defaultKey]
+	lines := splitLines([]byte(code))
+	result := &ast.TokensResult{
+		Tokens:    make([][]ast.ThemedToken, len(tokResult.Lines)),
+		FG:        defaultThm.DefaultForeground,
+		BG:        defaultThm.DefaultBackground,
+		ThemeName: defaultThm.Name,
+	}
+
+	for i, tokLine := range tokResult.Lines {
+		themed := make([]ast.ThemedToken, 0, len(tokLine))
+		var line []byte
+		if i < len(lines) {
+			line = lines[i]
+		}
+		for _, tok := range tokLine {
+			var content string
+			if line != nil && tok.Start >= 0 && tok.End <= len(line) {
+				content = strings.TrimRight(string(line[tok.Start:tok.End]), "\n")
+			}
+			if content == "" {
+				continue
+			}
+			def := resolveStyle(defaultThm, tok.Scopes)
+			styles := make(map[string]ast.TokenStyle, len(keys)-1)
+			for _, k := range keys {
+				if k == defaultKey {
+					continue
+				}
+				styles[k] = resolveStyle(thms[k], tok.Scopes)
+			}
+			themed = append(themed, ast.ThemedToken{
+				Content:     content,
+				Color:       def.Color,
+				BgColor:     def.BgColor,
+				FontStyle:   def.FontStyle,
+				Scopes:      tok.Scopes,
+				ThemeStyles: styles,
 			})
 		}
 		result.Tokens[i] = themed
@@ -466,10 +548,9 @@ func (h *Highlighter) codeToTokensMulti(
 	}
 
 	defaultKey := keys[0]
-	defaultThm := thms[defaultKey]
 
 	if lang == "ansi" {
-		result := h.ansiHighlight(code, defaultThm)
+		result := h.ansiHighlightMulti(code, thms, keys, defaultKey)
 		h.addMultiThemeInfo(result, keys, thms, defaultKey)
 		return result, nil
 	}
@@ -480,7 +561,7 @@ func (h *Highlighter) codeToTokensMulti(
 	}
 
 	if g == nil {
-		result := h.plaintextFallback(code, defaultThm)
+		result := h.plaintextFallbackMulti(code, thms, keys, defaultKey)
 		h.addMultiThemeInfo(result, keys, thms, defaultKey)
 		return result, nil
 	}
@@ -496,32 +577,7 @@ func (h *Highlighter) codeToTokensMulti(
 		return nil, doErr
 	}
 
-	result := h.buildResult(code, tokResult, defaultThm)
-
-	nonDefaultKeys := slices.Delete(slices.Clone(keys), 0, 1)
-	for i, tokLine := range tokResult.Lines {
-		for j, tok := range tokLine {
-			styles := make(map[string]ast.TokenStyle, len(nonDefaultKeys))
-			for _, k := range nonDefaultKeys {
-				ts := thms[k].Match(tok.Scopes)
-				color := ts.Foreground
-				if color == "" {
-					color = thms[k].DefaultForeground
-				}
-				fontStyle := ts.FontStyle
-				if fontStyle == theme.FontStyleNotSet {
-					fontStyle = theme.FontStyleNone
-				}
-				styles[k] = ast.TokenStyle{
-					Color:     color,
-					BgColor:   ts.Background,
-					FontStyle: fontStyle,
-				}
-			}
-			result.Tokens[i][j].ThemeStyles = styles
-		}
-	}
-
+	result := h.buildResultMulti(code, tokResult, thms, keys, defaultKey)
 	h.addMultiThemeInfo(result, keys, thms, defaultKey)
 	return result, nil
 }
@@ -571,6 +627,58 @@ func (h *Highlighter) ansiHighlight(code string, thm *theme.Theme) *ast.TokensRe
 	}
 }
 
+// ansiHighlightMulti is ansiHighlight's multi-theme sibling. ANSI colors are
+// theme-independent; only tokens without an explicit ANSI foreground take a
+// theme's default foreground, so that is the only per-theme difference.
+func (h *Highlighter) ansiHighlightMulti(
+	code string,
+	thms map[string]*theme.Theme,
+	keys []string,
+	defaultKey string,
+) *ast.TokensResult {
+	defaultThm := thms[defaultKey]
+	lines := ansi.Tokenize(code)
+	themed := make([][]ast.ThemedToken, len(lines))
+	for i, tokLine := range lines {
+		row := make([]ast.ThemedToken, len(tokLine))
+		for j, tok := range tokLine {
+			color := tok.Style.FG
+			if color == "" {
+				color = defaultThm.DefaultForeground
+			}
+			styles := make(map[string]ast.TokenStyle, len(keys)-1)
+			for _, k := range keys {
+				if k == defaultKey {
+					continue
+				}
+				themeColor := tok.Style.FG
+				if themeColor == "" {
+					themeColor = thms[k].DefaultForeground
+				}
+				styles[k] = ast.TokenStyle{
+					Color:     themeColor,
+					BgColor:   tok.Style.BG,
+					FontStyle: tok.Style.FontStyle,
+				}
+			}
+			row[j] = ast.ThemedToken{
+				Content:     tok.Content,
+				Color:       color,
+				BgColor:     tok.Style.BG,
+				FontStyle:   tok.Style.FontStyle,
+				ThemeStyles: styles,
+			}
+		}
+		themed[i] = row
+	}
+	return &ast.TokensResult{
+		Tokens:    themed,
+		FG:        defaultThm.DefaultForeground,
+		BG:        defaultThm.DefaultBackground,
+		ThemeName: defaultThm.Name,
+	}
+}
+
 func (h *Highlighter) plaintextFallback(code string, thm *theme.Theme) *ast.TokensResult {
 	raw := splitLines([]byte(code))
 	themed := make([][]ast.ThemedToken, len(raw))
@@ -598,6 +706,34 @@ func (h *Highlighter) plaintextFallback(code string, thm *theme.Theme) *ast.Toke
 			Kind: "unknown_lang",
 		}},
 	}
+}
+
+// plaintextFallbackMulti wraps plaintextFallback for multi-theme mode: every
+// plaintext token carries a theme's default foreground, so each non-default
+// theme's style is uniform.
+func (h *Highlighter) plaintextFallbackMulti(
+	code string,
+	thms map[string]*theme.Theme,
+	keys []string,
+	defaultKey string,
+) *ast.TokensResult {
+	result := h.plaintextFallback(code, thms[defaultKey])
+	for i, line := range result.Tokens {
+		for j := range line {
+			styles := make(map[string]ast.TokenStyle, len(keys)-1)
+			for _, k := range keys {
+				if k == defaultKey {
+					continue
+				}
+				styles[k] = ast.TokenStyle{
+					Color:     thms[k].DefaultForeground,
+					FontStyle: theme.FontStyleNone,
+				}
+			}
+			result.Tokens[i][j].ThemeStyles = styles
+		}
+	}
+	return result
 }
 
 // LoadLanguage registers a grammar from raw JSON bytes.
