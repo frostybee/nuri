@@ -214,7 +214,25 @@ func runVerify(root string) (int, error) {
 	// Verify the metadata indexes match the asset dirs.
 	failures += verifyIndexes(root)
 
+	// Verify NOTICE files match the submodule originals.
+	failures += verifyNotices(root)
+
 	return failures, nil
+}
+
+func verifyNotices(root string) int {
+	noticePath := filepath.Join(root, "THIRD-PARTY-NOTICE")
+	info, err := os.Stat(noticePath)
+	if err != nil {
+		fmt.Printf("  [FAIL] THIRD-PARTY-NOTICE: %v\n", err)
+		return 1
+	}
+	if info.Size() == 0 {
+		fmt.Printf("  [FAIL] THIRD-PARTY-NOTICE: empty\n")
+		return 1
+	}
+	fmt.Printf("  [PASS] THIRD-PARTY-NOTICE: %d bytes\n", info.Size())
+	return 0
 }
 
 // verifyIndexes checks that each bundle's grammar metadata index agrees

@@ -15,7 +15,7 @@ import (
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run ./tools/devtool <command>")
-		fmt.Fprintln(os.Stderr, "commands: sync, generate, lock, verify, all")
+		fmt.Fprintln(os.Stderr, "commands: sync, generate, lock, verify, notices, all")
 		os.Exit(1)
 	}
 
@@ -36,6 +36,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
 			os.Exit(1)
 		}
+		fmt.Println("Regenerating NOTICE files...")
+		if err := generateNotices(root); err != nil {
+			fmt.Fprintf(os.Stderr, "notices: %v\n", err)
+			os.Exit(1)
+		}
 	case "generate":
 		if err := generate(root); err != nil {
 			fmt.Fprintf(os.Stderr, "generate: %v\n", err)
@@ -44,6 +49,11 @@ func main() {
 	case "lock":
 		if err := generateLockfile(root); err != nil {
 			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
+			os.Exit(1)
+		}
+	case "notices":
+		if err := generateNotices(root); err != nil {
+			fmt.Fprintf(os.Stderr, "notices: %v\n", err)
 			os.Exit(1)
 		}
 	case "verify":
@@ -60,6 +70,11 @@ func main() {
 		fmt.Println("Regenerating lockfile...")
 		if err := generateLockfile(root); err != nil {
 			fmt.Fprintf(os.Stderr, "lock: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Regenerating NOTICE files...")
+		if err := generateNotices(root); err != nil {
+			fmt.Fprintf(os.Stderr, "notices: %v\n", err)
 			os.Exit(1)
 		}
 		if err := generate(root); err != nil {
