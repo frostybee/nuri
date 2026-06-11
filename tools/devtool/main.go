@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/frostybee/nuri/internal/assetfs"
 )
 
 func main() {
@@ -112,7 +114,17 @@ func syncGrammars(root string) error {
 	coreThemeDir := filepath.Join(root, "bundle", "core", "themes")
 	fullThemeDir := filepath.Join(root, "bundle", "full", "themes")
 
+	// Cleaning first makes sync idempotent and removes assets that
+	// disappeared upstream.
+	for _, dir := range []string{coreGrammarDir, fullGrammarDir, coreThemeDir, fullThemeDir} {
+		if err := cleanAssetDir(dir); err != nil {
+			return fmt.Errorf("clean %s: %w", dir, err)
+		}
+	}
+
 	var coreCount, fullCount, themeCount int
+	coreIndex := assetfs.Index{Version: assetfs.IndexVersion, Grammars: make(map[string]assetfs.GrammarMeta)}
+	fullIndex := assetfs.Index{Version: assetfs.IndexVersion, Grammars: make(map[string]assetfs.GrammarMeta)}
 
 	entries, err := os.ReadDir(submoduleGrammars)
 	if err != nil {
@@ -122,20 +134,61 @@ func syncGrammars(root string) error {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		src := filepath.Join(submoduleGrammars, e.Name())
-
-		if err := copyFile(src, filepath.Join(fullGrammarDir, e.Name())); err != nil {
-			return fmt.Errorf("copy %s to full: %w", e.Name(), err)
+		baseName := strings.TrimSuffix(e.Name(), ".json")
+		if e.Name() == assetfs.IndexFileName {
+			return fmt.Errorf("upstream grammar %q collides with the reserved index file name", e.Name())
 		}
+
+		raw, err := os.ReadFile(filepath.Join(submoduleGrammars, e.Name()))
+		if err != nil {
+			return fmt.Errorf("read %s: %w", e.Name(), err)
+		}
+		minified, err := minifyStripTop(raw, grammarDropFields...)
+		if err != nil {
+			return fmt.Errorf("minify %s: %w", e.Name(), err)
+		}
+		var meta assetfs.GrammarMeta
+		if err := json.Unmarshal(minified, &meta); err != nil {
+			return fmt.Errorf("probe %s: %w", e.Name(), err)
+		}
+		compressed, err := gzipBytes(minified)
+		if err != nil {
+			return fmt.Errorf("gzip %s: %w", e.Name(), err)
+		}
+
+		outName := e.Name() + ".gz"
+		if err := writeAsset(filepath.Join(fullGrammarDir, outName), compressed); err != nil {
+			return fmt.Errorf("write %s to full: %w", outName, err)
+		}
+		fullIndex.Grammars[baseName] = meta
 		fullCount++
 
-		baseName := strings.TrimSuffix(e.Name(), ".json")
 		if coreSet[baseName] {
-			if err := copyFile(src, filepath.Join(coreGrammarDir, e.Name())); err != nil {
-				return fmt.Errorf("copy %s to core: %w", e.Name(), err)
+			// The identical byte slice goes to core so the lockfile's
+			// core subset check stays byte exact.
+			if err := writeAsset(filepath.Join(coreGrammarDir, outName), compressed); err != nil {
+				return fmt.Errorf("write %s to core: %w", outName, err)
 			}
+			coreIndex.Grammars[baseName] = meta
 			coreCount++
 		}
+	}
+
+	var missing []string
+	for _, name := range coreList {
+		if _, ok := coreIndex.Grammars[name]; !ok {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("core grammar list entries missing from submodule: %v", missing)
+	}
+
+	if err := writeIndex(filepath.Join(fullGrammarDir, assetfs.IndexFileName+".gz"), fullIndex); err != nil {
+		return fmt.Errorf("write full index: %w", err)
+	}
+	if err := writeIndex(filepath.Join(coreGrammarDir, assetfs.IndexFileName+".gz"), coreIndex); err != nil {
+		return fmt.Errorf("write core index: %w", err)
 	}
 
 	themeEntries, err := os.ReadDir(submoduleThemes)
@@ -146,18 +199,66 @@ func syncGrammars(root string) error {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		src := filepath.Join(submoduleThemes, e.Name())
-		if err := copyFile(src, filepath.Join(coreThemeDir, e.Name())); err != nil {
-			return fmt.Errorf("copy theme %s to core: %w", e.Name(), err)
+		raw, err := os.ReadFile(filepath.Join(submoduleThemes, e.Name()))
+		if err != nil {
+			return fmt.Errorf("read theme %s: %w", e.Name(), err)
 		}
-		if err := copyFile(src, filepath.Join(fullThemeDir, e.Name())); err != nil {
-			return fmt.Errorf("copy theme %s to full: %w", e.Name(), err)
+		minified, err := minifyStripTop(raw, themeDropFields...)
+		if err != nil {
+			return fmt.Errorf("minify theme %s: %w", e.Name(), err)
+		}
+		compressed, err := gzipBytes(minified)
+		if err != nil {
+			return fmt.Errorf("gzip theme %s: %w", e.Name(), err)
+		}
+		outName := e.Name() + ".gz"
+		if err := writeAsset(filepath.Join(coreThemeDir, outName), compressed); err != nil {
+			return fmt.Errorf("write theme %s to core: %w", outName, err)
+		}
+		if err := writeAsset(filepath.Join(fullThemeDir, outName), compressed); err != nil {
+			return fmt.Errorf("write theme %s to full: %w", outName, err)
 		}
 		themeCount++
 	}
 
-	fmt.Printf("Synced %d grammars to core, %d to full, %d themes to both\n", coreCount, fullCount, themeCount)
+	fmt.Printf("Synced %d grammars to core, %d to full, %d themes to both (minified, pruned, gzipped)\n",
+		coreCount, fullCount, themeCount)
 	return nil
+}
+
+// cleanAssetDir removes all .json and .json.gz files from dir, creating
+// the directory if it does not exist.
+func cleanAssetDir(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return os.MkdirAll(dir, 0o755)
+		}
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(e.Name(), ".json") || strings.HasSuffix(e.Name(), ".json.gz") {
+			if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func writeIndex(dst string, idx assetfs.Index) error {
+	data, err := marshalCompact(idx)
+	if err != nil {
+		return err
+	}
+	compressed, err := gzipBytes(data)
+	if err != nil {
+		return err
+	}
+	return writeAsset(dst, compressed)
 }
 
 func generate(root string) error {
@@ -216,25 +317,11 @@ func readGrammarList(path string) ([]string, error) {
 	return names, scanner.Err()
 }
 
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
+func writeAsset(dst string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	return err
+	return os.WriteFile(dst, data, 0o644)
 }
 
 func runCmd(dir string, name string, args ...string) error {

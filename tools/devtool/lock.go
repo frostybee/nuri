@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/frostybee/nuri/internal/assetfs"
 )
 
 const lockfileName = "provenance.lock.json"
@@ -209,7 +211,78 @@ func runVerify(root string) (int, error) {
 	// Verify core subset consistency.
 	failures += verifyCoreSubset(root)
 
+	// Verify the metadata indexes match the asset dirs.
+	failures += verifyIndexes(root)
+
 	return failures, nil
+}
+
+// verifyIndexes checks that each bundle's grammar metadata index agrees
+// with the files actually present. Per file hashes alone cannot catch a
+// stale index after a manual asset edit.
+func verifyIndexes(root string) int {
+	var failures int
+	for _, bundle := range []string{"core", "full"} {
+		dir := filepath.Join(root, "bundle", bundle, "grammars")
+		label := "index (" + bundle + ")"
+
+		compressed, err := os.ReadFile(filepath.Join(dir, assetfs.IndexFileName+".gz"))
+		if err != nil {
+			fmt.Printf("  [FAIL] %s: %v\n", label, err)
+			failures++
+			continue
+		}
+		data, err := gunzipBytes(compressed)
+		if err != nil {
+			fmt.Printf("  [FAIL] %s: gunzip: %v\n", label, err)
+			failures++
+			continue
+		}
+		var idx assetfs.Index
+		if err := json.Unmarshal(data, &idx); err != nil {
+			fmt.Printf("  [FAIL] %s: parse: %v\n", label, err)
+			failures++
+			continue
+		}
+		if idx.Version != assetfs.IndexVersion {
+			fmt.Printf("  [FAIL] %s: version %d, want %d\n", label, idx.Version, assetfs.IndexVersion)
+			failures++
+			continue
+		}
+
+		onDisk := make(map[string]bool)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			fmt.Printf("  [FAIL] %s: %v\n", label, err)
+			failures++
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json.gz") || e.Name() == assetfs.IndexFileName+".gz" {
+				continue
+			}
+			onDisk[strings.TrimSuffix(e.Name(), ".json.gz")] = true
+		}
+
+		var bundleFailures int
+		for name := range idx.Grammars {
+			if !onDisk[name] {
+				fmt.Printf("  [FAIL] %s: lists %q but no %s.json.gz on disk\n", label, name, name)
+				bundleFailures++
+			}
+		}
+		for name := range onDisk {
+			if _, ok := idx.Grammars[name]; !ok {
+				fmt.Printf("  [FAIL] %s: %s.json.gz on disk but missing from index\n", label, name)
+				bundleFailures++
+			}
+		}
+		if bundleFailures == 0 {
+			fmt.Printf("  [PASS] %s: %d entries consistent\n", label, len(idx.Grammars))
+		}
+		failures += bundleFailures
+	}
+	return failures
 }
 
 func verifyAssetDir(root, label, dir string, expected map[string]string) int {
@@ -271,8 +344,14 @@ func verifyCoreSubset(root string) int {
 		return 1
 	}
 
-	var failures int
+	var failures, compared int
 	for name, coreHash := range coreHashes {
+		// The metadata index legitimately differs between bundles: the
+		// core index lists only the core grammar subset.
+		if name == assetfs.IndexFileName+".gz" {
+			continue
+		}
+		compared++
 		fullHash, ok := fullHashes[name]
 		if !ok {
 			fmt.Printf("  [FAIL] core subset: %s not in full bundle\n", name)
@@ -284,7 +363,7 @@ func verifyCoreSubset(root string) int {
 	}
 
 	if failures == 0 {
-		fmt.Printf("  [PASS] core subset: %d/%d consistent\n", len(coreHashes), len(coreHashes))
+		fmt.Printf("  [PASS] core subset: %d/%d consistent\n", compared, compared)
 	}
 	return failures
 }
@@ -370,7 +449,7 @@ func hashDir(dir string) (map[string]string, error) {
 
 	result := make(map[string]string, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+		if e.IsDir() || (!strings.HasSuffix(e.Name(), ".json") && !strings.HasSuffix(e.Name(), ".json.gz")) {
 			continue
 		}
 		h, err := hashFile(filepath.Join(dir, e.Name()))

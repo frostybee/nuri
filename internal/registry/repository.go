@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/frostybee/nuri/internal/assetfs"
 	"github.com/frostybee/nuri/internal/grammar"
 )
 
@@ -147,6 +149,14 @@ func (r *Repository) buildIndexes() error {
 		return nil
 	}
 
+	// Fast path: a generated metadata index ships with the bundle packages
+	// so construction does not read every grammar file.
+	if data, err := fs.ReadFile(r.fsys, assetfs.IndexFileName); err == nil {
+		if r.loadIndexFile(data) {
+			return nil
+		}
+	}
+
 	entries, err := fs.ReadDir(r.fsys, ".")
 	if err != nil {
 		return nil
@@ -154,6 +164,9 @@ func (r *Repository) buildIndexes() error {
 
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		if e.Name() == assetfs.IndexFileName {
 			continue
 		}
 		name := strings.TrimSuffix(e.Name(), ".json")
@@ -190,6 +203,44 @@ func (r *Repository) buildIndexes() error {
 		}
 	}
 	return nil
+}
+
+// loadIndexFile populates the lookup maps from a generated metadata index.
+// It returns false when the index is malformed or has an unsupported
+// version, in which case the caller falls back to scanning the directory.
+// Grammar names are iterated in sorted order so injectionIndex slices and
+// extIndex first wins behavior stay deterministic, matching the sorted
+// directory scan exactly.
+func (r *Repository) loadIndexFile(data []byte) bool {
+	var idx assetfs.Index
+	if err := json.Unmarshal(data, &idx); err != nil {
+		return false
+	}
+	if idx.Version != assetfs.IndexVersion {
+		return false
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(idx.Grammars)) {
+		meta := idx.Grammars[name]
+		if meta.ScopeName != "" {
+			r.scopeIndex[meta.ScopeName] = name
+		}
+		for _, target := range meta.InjectTo {
+			r.injectionIndex[target] = append(r.injectionIndex[target], name)
+		}
+		for _, ext := range meta.FileTypes {
+			ext = strings.ToLower(ext)
+			if _, exists := r.extIndex[ext]; !exists {
+				r.extIndex[ext] = name
+			}
+		}
+		if meta.FirstLineMatch != "" {
+			if re, err := regexp.Compile(meta.FirstLineMatch); err == nil {
+				r.firstLineIndex[name] = re
+			}
+		}
+	}
+	return true
 }
 
 // DetectByFilename resolves a grammar name from a filename or path.

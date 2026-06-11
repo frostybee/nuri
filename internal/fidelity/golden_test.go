@@ -97,11 +97,11 @@ func TestGoldenFidelityAll(t *testing.T) {
 // auxiliaryGrammars are grammars included via $include from parent grammars.
 // They have no standalone samples and are not tested independently.
 var auxiliaryGrammars = map[string]bool{
-	"cpp-macro":                       true,
-	"html-derivative":                 true,
-	"vue-directives":                  true,
-	"vue-html":                        true,
-	"vue-interpolations":              true,
+	"cpp-macro":                        true,
+	"html-derivative":                  true,
+	"vue-directives":                   true,
+	"vue-html":                         true,
+	"vue-interpolations":               true,
 	"vue-sfc-style-variable-injection": true,
 }
 
@@ -116,10 +116,11 @@ func TestCoreOnlyShipsGreen(t *testing.T) {
 
 	var held []string
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+		// Physical asset files are stored gzip compressed.
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json.gz") || e.Name() == "index.json.gz" {
 			continue
 		}
-		grammar := strings.TrimSuffix(e.Name(), ".json")
+		grammar := strings.TrimSuffix(e.Name(), ".json.gz")
 		if auxiliaryGrammars[grammar] {
 			continue
 		}
@@ -143,7 +144,7 @@ func runTriple(t *testing.T, ctx context.Context, h *nuri.Highlighter, fix *fide
 	result := fidelity.TripleResult{
 		Grammar: fix.Grammar,
 		Theme:   themeName,
-		Source:   fix.Grammar,
+		Source:  fix.Grammar,
 	}
 
 	tokResult, err := h.CodeToTokens(ctx, fix.Source, ast.CodeToTokensOptions{
