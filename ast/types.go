@@ -30,43 +30,43 @@ type CodeToTokensOptions struct {
 
 // TokenStyle holds resolved style for a single theme.
 type TokenStyle struct {
-	Color     string
-	BgColor   string
-	FontStyle theme.FontStyle
+	Color     string          `json:"color,omitempty"`
+	BgColor   string          `json:"bgColor,omitempty"`
+	FontStyle theme.FontStyle `json:"fontStyle"`
 }
 
 // ThemedToken represents a single token with resolved style information.
 type ThemedToken struct {
-	Content   string
-	Color     string          // resolved foreground hex color (default theme)
-	BgColor   string          // resolved background hex color (default theme, often empty)
-	FontStyle theme.FontStyle // bitmask (default theme): Italic, Bold, Underline, Strikethrough
-	Scopes    []string        // TextMate scope stack (outermost first), nil for plaintext
+	Content   string          `json:"content"`
+	Color     string          `json:"color,omitempty"`
+	BgColor   string          `json:"bgColor,omitempty"`
+	FontStyle theme.FontStyle `json:"fontStyle"`
+	Scopes    []string        `json:"scopes,omitempty"`
 
 	// ThemeStyles holds per-theme styles in multi-theme mode.
 	// Keys are theme keys from CodeToHTMLOptions.Themes (e.g. "dark").
 	// nil in single-theme mode.
-	ThemeStyles map[string]TokenStyle
+	ThemeStyles map[string]TokenStyle `json:"themeStyles,omitempty"`
 }
 
 // TokensResult is the output of CodeToTokens.
 type TokensResult struct {
-	Tokens      [][]ThemedToken
-	FG          string // theme default foreground
-	BG          string // theme default background
-	ThemeName   string
-	Diagnostics []Diagnostic
+	Tokens      [][]ThemedToken `json:"tokens"`
+	FG          string          `json:"fg"`
+	BG          string          `json:"bg"`
+	ThemeName   string          `json:"themeName"`
+	Diagnostics []Diagnostic    `json:"diagnostics,omitempty"`
 
 	// Multi-theme: per-theme default colors. nil in single-theme mode.
-	ThemeFG    map[string]string
-	ThemeBG    map[string]string
-	ThemeNames []string // sorted theme keys (for deterministic output)
+	ThemeFG    map[string]string `json:"themeFG,omitempty"`
+	ThemeBG    map[string]string `json:"themeBG,omitempty"`
+	ThemeNames []string          `json:"themeNames,omitempty"`
 }
 
 // Diagnostic records a non-fatal degradation during tokenization.
 type Diagnostic struct {
-	Line int
-	Kind string // "timeout" | "too_long" | "panic" | "unknown_lang"
+	Line int    `json:"line"`
+	Kind string `json:"kind"`
 }
 
 // ColorDepth specifies the ANSI color mode for terminal output.
@@ -90,6 +90,40 @@ type CodeToANSIOptions struct {
 
 	MaxLineLength *int // nil = use highlighter default; per-line byte-length pre-filter
 	TimeoutMs     *int // nil = use highlighter default; per-line soft timeout in ms
+}
+
+// CodeToPlainTextOptions configures a CodeToPlainText call.
+type CodeToPlainTextOptions struct {
+	Lang          string
+	Theme         string
+	MaxLineLength *int
+	TimeoutMs     *int
+}
+
+// CodeToJSONOptions configures a CodeToJSON call.
+type CodeToJSONOptions struct {
+	Lang          string
+	Theme         string
+	Themes        map[string]string
+	MaxLineLength *int
+	TimeoutMs     *int
+	Indent        bool
+}
+
+// CodeToSVGOptions configures a CodeToSVG call.
+type CodeToSVGOptions struct {
+	Lang           string
+	Theme          string
+	MaxLineLength  *int
+	TimeoutMs      *int
+	FontFamily     string  // default: "Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, monospace"
+	FontSize       float64 // default: 14 (px)
+	LineHeight     float64 // default: 1.2 (em multiplier)
+	PadX           float64 // default: 16 (px)
+	PadY           float64 // default: 16 (px)
+	TabWidth       int     // default: 4
+	CornerRadius   float64 // default: 8 (px)
+	ShowBackground *bool   // nil or *true = show background rect; *false = no background
 }
 
 // CodeToHTMLOptions configures a CodeToHTML call.

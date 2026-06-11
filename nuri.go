@@ -3,6 +3,7 @@ package nuri
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -30,7 +31,10 @@ type (
 	Diagnostic         = ast.Diagnostic
 	CodeToTokensOptions = ast.CodeToTokensOptions
 	CodeToHTMLOptions  = ast.CodeToHTMLOptions
-	CodeToANSIOptions  = ast.CodeToANSIOptions
+	CodeToANSIOptions      = ast.CodeToANSIOptions
+	CodeToPlainTextOptions = ast.CodeToPlainTextOptions
+	CodeToJSONOptions      = ast.CodeToJSONOptions
+	CodeToSVGOptions       = ast.CodeToSVGOptions
 	ColorDepth         = ast.ColorDepth
 	LineRange          = ast.LineRange
 	StyleClassMap      = ast.StyleClassMap
@@ -386,6 +390,83 @@ func (h *Highlighter) CodeToANSI(
 
 	var buf strings.Builder
 	if err := renderer.RenderANSI(&buf, result, &opts); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// CodeToPlainText tokenizes source code and returns the concatenated
+// token content with no formatting.
+func (h *Highlighter) CodeToPlainText(
+	ctx context.Context,
+	code string,
+	opts ast.CodeToPlainTextOptions,
+) (string, error) {
+	result, err := h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
+		Lang:          opts.Lang,
+		Theme:         opts.Theme,
+		MaxLineLength: opts.MaxLineLength,
+		TimeoutMs:     opts.TimeoutMs,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var buf strings.Builder
+	if err := renderer.RenderPlainText(&buf, result); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// CodeToJSON tokenizes source code, resolves colors from the theme,
+// and returns the result as JSON bytes.
+func (h *Highlighter) CodeToJSON(
+	ctx context.Context,
+	code string,
+	opts ast.CodeToJSONOptions,
+) ([]byte, error) {
+	var result *ast.TokensResult
+	var err error
+	if len(opts.Themes) > 0 {
+		result, err = h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes, opts.MaxLineLength, opts.TimeoutMs)
+	} else {
+		result, err = h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
+			Lang:          opts.Lang,
+			Theme:         opts.Theme,
+			MaxLineLength: opts.MaxLineLength,
+			TimeoutMs:     opts.TimeoutMs,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.Indent {
+		return json.MarshalIndent(result, "", "  ")
+	}
+	return json.Marshal(result)
+}
+
+// CodeToSVG tokenizes source code, resolves colors from the theme,
+// and renders the result as a self-contained SVG document.
+func (h *Highlighter) CodeToSVG(
+	ctx context.Context,
+	code string,
+	opts ast.CodeToSVGOptions,
+) (string, error) {
+	result, err := h.CodeToTokens(ctx, code, ast.CodeToTokensOptions{
+		Lang:          opts.Lang,
+		Theme:         opts.Theme,
+		MaxLineLength: opts.MaxLineLength,
+		TimeoutMs:     opts.TimeoutMs,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var buf strings.Builder
+	if err := renderer.RenderSVG(&buf, result, &opts); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
