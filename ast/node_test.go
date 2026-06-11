@@ -176,3 +176,35 @@ func TestSetAttr(t *testing.T) {
 		t.Errorf("attr = %q, want \"2\"", el.Attrs["data-line"])
 	}
 }
+
+func TestStyleValueEscaped(t *testing.T) {
+	el := &Element{
+		Tag:    "span",
+		Styles: map[string]string{"color": `#fff" onmouseover="x` + "&"},
+	}
+	var buf strings.Builder
+	el.WriteTo(&buf)
+	out := buf.String()
+	if strings.Contains(out, `#fff"`) {
+		t.Errorf("style value with quote broke out of the attribute: %s", out)
+	}
+	if !strings.Contains(out, `style="color:#fff&quot; onmouseover=&quot;x&amp;"`) {
+		t.Errorf("style value not escaped as expected: %s", out)
+	}
+}
+
+func TestClassValueEscaped(t *testing.T) {
+	el := &Element{
+		Tag:     "pre",
+		Classes: []string{"shiki", `theme"with&quote`},
+	}
+	var buf strings.Builder
+	el.WriteTo(&buf)
+	out := buf.String()
+	if strings.Contains(out, `theme"`) {
+		t.Errorf("class value with quote broke out of the attribute: %s", out)
+	}
+	if !strings.Contains(out, `class="shiki theme&quot;with&amp;quote"`) {
+		t.Errorf("class value not escaped as expected: %s", out)
+	}
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"flag"
 	"fmt"
 	"html/template"
@@ -14,6 +15,9 @@ import (
 	"github.com/frostybee/nuri/bundle/core"
 	"github.com/frostybee/nuri/transformers"
 )
+
+//go:embed template.html
+var templateFS embed.FS
 
 type Block struct {
 	Label string
@@ -367,7 +371,7 @@ func main() {
 		Generated: time.Now().Format(time.RFC3339),
 	}
 
-	tmpl, err := template.ParseFiles("cmd/demo/html/template.html")
+	tmpl, err := template.ParseFS(templateFS, "template.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -383,8 +387,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	// log.Fatal exits without running defers, so close and clean up
+	// explicitly on every path to avoid leaving a partial output file.
 	if err := tmpl.Execute(f, data); err != nil {
+		f.Close()
+		os.Remove(*outPath)
+		log.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(*outPath)
 		log.Fatal(err)
 	}
 	fmt.Printf("Wrote %s\n", *outPath)

@@ -100,6 +100,20 @@ loop:
 			break
 		}
 
+		// A begin match that consumes the full scan string must record
+		// BeginCapturedEOL, which seeds anchorPosition = 0 for while rule
+		// checks on the next line. vscode-textmate computes the flag as
+		// end == lineLength on unclamped indices (tokenizeString.ts line
+		// 181). The fixture generator feeds vscode-textmate lines that
+		// keep their real newline, and the engine appends one more, so
+		// lineLength there equals len(scanLine) here: real newline plus
+		// sentinel. The flag is true only when the match consumes both.
+		// Captured before the clamp below, which would otherwise make the
+		// condition unreachable. Note this follows the golden fixtures'
+		// line convention, not npm Shiki's bare line splitting; see
+		// my-docs/official/fidelity.md.
+		capturedEOL := mr.match.Captures[0].End == len(scanLine)
+
 		// Clamp capture positions to the original line boundary.
 		// The scanner operates on scanLine (with sentinel \n), but
 		// token production must stay within the real line.
@@ -155,7 +169,7 @@ loop:
 			}
 
 		case *grammar.BeginEndRule:
-			handleBeginRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar)
+			handleBeginRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar, capturedEOL)
 			anchorPosition = matchEnd
 
 			// Check [2]: BeginEndRule pushed same rule without advancing
@@ -167,7 +181,7 @@ loop:
 			}
 
 		case *grammar.BeginWhileRule:
-			handleBeginWhileRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar)
+			handleBeginWhileRule(rule, mr.match, scanLine, state, builder, pos, cc, mr.ruleGrammar, capturedEOL)
 			anchorPosition = matchEnd
 
 			// Check [3]: BeginWhileRule pushed same rule without advancing
@@ -272,6 +286,7 @@ func handleBeginRule(
 	pos int,
 	cc *captureContext,
 	ruleGrammar *grammar.Grammar,
+	capturedEOL bool,
 ) {
 	// ResolveBackrefs/ResolveScopeBackrefs are pure no-ops without markers
 	// (flag computed at parse time), so extraction is skipped harmlessly.
@@ -308,7 +323,7 @@ func handleBeginRule(
 
 	matchEnd := match.Captures[0].End
 	state.pushBeginEnd(rule, endRule, matchEnd, pos, resolvedName, resolvedContentName, ruleGrammar)
-	state.top().BeginCapturedEOL = matchEnd == len(line)
+	state.top().BeginCapturedEOL = capturedEOL
 }
 
 func handleEndRule(
@@ -345,6 +360,7 @@ func handleBeginWhileRule(
 	pos int,
 	cc *captureContext,
 	ruleGrammar *grammar.Grammar,
+	capturedEOL bool,
 ) {
 	// Same parse-time gating as handleBeginRule.
 	var captureTexts []string
@@ -376,7 +392,7 @@ func handleBeginWhileRule(
 
 	matchEnd := match.Captures[0].End
 	state.pushBeginWhile(rule, whileRule, matchEnd, pos, resolvedName, resolvedContentName, ruleGrammar)
-	state.top().BeginCapturedEOL = matchEnd == len(line)
+	state.top().BeginCapturedEOL = capturedEOL
 }
 
 type whileCheckResult struct {
@@ -496,7 +512,7 @@ func pickBestMatch(grammarMatch, injMatch *matchResult, injPriority grammar.Prio
 func extractCaptureTexts(captures []oniguruma.Capture, line []byte) []string {
 	texts := make([]string, len(captures))
 	for i, c := range captures {
-		if c.Start >= 0 && c.End >= 0 && line != nil {
+		if c.Start >= 0 && c.End >= c.Start && c.End <= len(line) {
 			texts[i] = string(line[c.Start:c.End])
 		}
 	}

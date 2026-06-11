@@ -51,7 +51,7 @@ func (e *Element) WriteTo(w io.Writer) (int64, error) {
 
 	if len(e.Classes) > 0 {
 		cw.writeString(` class="`)
-		cw.writeString(strings.Join(e.Classes, " "))
+		cw.writeString(escapeAttr(strings.Join(e.Classes, " ")))
 		cw.writeString(`"`)
 	}
 
@@ -68,7 +68,7 @@ func (e *Element) WriteTo(w io.Writer) (int64, error) {
 			}
 			cw.writeString(k)
 			cw.writeString(":")
-			cw.writeString(e.Styles[k])
+			cw.writeString(escapeAttr(e.Styles[k]))
 		}
 		cw.writeString(`"`)
 	}

@@ -315,7 +315,28 @@ func (h *Highlighter) applyDefaults(opts ast.CodeToHTMLOptions) ast.CodeToHTMLOp
 	if opts.TimeoutMs != nil {
 		d.TimeoutMs = opts.TimeoutMs
 	}
+
+	// The merged struct shares slice backing arrays with h.defaults or
+	// with the caller's options. Transformers append to the line range
+	// slices through the merged options (e.g. Meta.Preprocess), so an
+	// append into spare capacity would write into the shared array and
+	// leak ranges across calls. Exact length copies force any later
+	// append to reallocate.
+	d.HighlightLines = cloneRanges(d.HighlightLines)
+	d.FocusLines = cloneRanges(d.FocusLines)
+	d.InsertedLines = cloneRanges(d.InsertedLines)
+	d.DeletedLines = cloneRanges(d.DeletedLines)
 	return d
+}
+
+// cloneRanges returns an exact length copy of rs, or nil for empty input.
+func cloneRanges(rs []ast.LineRange) []ast.LineRange {
+	if len(rs) == 0 {
+		return nil
+	}
+	out := make([]ast.LineRange, len(rs))
+	copy(out, rs)
+	return out
 }
 
 // CodeToHTML tokenizes source code, resolves colors from the theme,

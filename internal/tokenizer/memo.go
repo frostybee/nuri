@@ -53,9 +53,12 @@ type compileMemo struct {
 
 func newCompileMemo(onigLib oniguruma.OnigLib, resolver grammar.GrammarResolver) *compileMemo {
 	return &compileMemo{
-		onigLib:  onigLib,
-		resolver: resolver,
-		entries:  make(map[memoKey]*memoEntry),
+		onigLib:      onigLib,
+		resolver:     resolver,
+		entries:      make(map[memoKey]*memoEntry),
+		whiles:       make(map[*grammar.WhileRule]*memoEntry),
+		injections:   make(map[int]*memoEntry),
+		captureRoots: make(map[*grammar.CaptureRule]*grammar.CollectionRule),
 	}
 }
 
@@ -140,9 +143,6 @@ func (m *compileMemo) getOrCompileWhile(ctx context.Context, wr *grammar.WhileRu
 	if e, ok := m.whiles[wr]; ok {
 		return e
 	}
-	if m.whiles == nil {
-		m.whiles = make(map[*grammar.WhileRule]*memoEntry)
-	}
 	e := m.resolveScanner(ctx, []grammar.CompiledRule{{
 		Pattern: []byte(wr.WhilePattern),
 		Rule:    wr,
@@ -164,9 +164,6 @@ func (m *compileMemo) getOrCompileInjection(
 ) *memoEntry {
 	if e, ok := m.injections[idx]; ok {
 		return e
-	}
-	if m.injections == nil {
-		m.injections = make(map[int]*memoEntry)
 	}
 
 	var rules []grammar.Rule
@@ -195,9 +192,6 @@ func (m *compileMemo) getOrCompileInjection(
 func (m *compileMemo) captureRoot(cr *grammar.CaptureRule) *grammar.CollectionRule {
 	if root, ok := m.captureRoots[cr]; ok {
 		return root
-	}
-	if m.captureRoots == nil {
-		m.captureRoots = make(map[*grammar.CaptureRule]*grammar.CollectionRule)
 	}
 	root := &grammar.CollectionRule{
 		ID:       grammar.InvalidRuleID,

@@ -248,3 +248,33 @@ func TestRegisterAlias(t *testing.T) {
 	}
 	t.Error("alias 'golang' did not resolve to Go grammar")
 }
+
+func TestApplyDefaultsNoSliceAliasing(t *testing.T) {
+	t.Run("defaults slices", func(t *testing.T) {
+		base := make([]LineRange, 1, 4)
+		base[0] = LineRange{Start: 1, End: 1}
+		h := &Highlighter{defaults: &CodeToHTMLOptions{HighlightLines: base}}
+
+		d := h.applyDefaults(CodeToHTMLOptions{})
+		d.HighlightLines = append(d.HighlightLines, LineRange{Start: 9, End: 9})
+
+		backing := base[:cap(base)]
+		if backing[1].Start == 9 {
+			t.Error("append through merged options wrote into the defaults backing array")
+		}
+	})
+
+	t.Run("caller slices", func(t *testing.T) {
+		h := &Highlighter{defaults: &CodeToHTMLOptions{Theme: "github-dark"}}
+		callerRanges := make([]LineRange, 1, 4)
+		callerRanges[0] = LineRange{Start: 2, End: 2}
+
+		d := h.applyDefaults(CodeToHTMLOptions{HighlightLines: callerRanges})
+		d.HighlightLines = append(d.HighlightLines, LineRange{Start: 9, End: 9})
+
+		backing := callerRanges[:cap(callerRanges)]
+		if backing[1].Start == 9 {
+			t.Error("append through merged options wrote into the caller's backing array")
+		}
+	})
+}
