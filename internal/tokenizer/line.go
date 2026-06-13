@@ -27,11 +27,11 @@ func tokenizeLine(
 	lineLen := len(line)
 	anchorPosition := -1
 
-	// vscode-textmate appends "\n" to every line before tokenizing
-	// (grammar.ts:380). Lookaheads like (?!\s) in end patterns rely on
-	// a character after the line's real \n — without it the lookahead
-	// vacuously succeeds at end-of-string. scanLine is used for regex
-	// matching only; token production stays within the original line.
+	// vscode-textmate appends "\n" to every bare line before tokenizing
+	// (grammar.ts:380): anchors like $ and lookaheads in end patterns
+	// need a newline character to interact with. scanLine mirrors that.
+	// It is used for regex matching only; token production stays within
+	// the bare line.
 	scanLine := append(line[:len(line):len(line)], '\n')
 
 	cc := &captureContext{
@@ -45,12 +45,9 @@ func tokenizeLine(
 		deadline:   deadline,
 	}
 
-	// Strip trailing newline for the purpose of token text,
-	// but keep the full line for regex matching (anchors need it).
+	// Lines are bare (no trailing newline), so the token boundary equals
+	// the line length. The sentinel newline exists only in scanLine.
 	tokenEnd := lineLen
-	if tokenEnd > 0 && line[tokenEnd-1] == '\n' {
-		tokenEnd--
-	}
 
 	// Phase A: check while conditions (only for top-level calls, not retokenization)
 	if startPos == 0 {
@@ -61,14 +58,21 @@ func tokenizeLine(
 		isFirstLine = wcr.isFirstLine
 	}
 
+	// The scan boundary is the full scan string, matching vscode-textmate
+	// whose lineLength counts the bare line plus its appended newline.
+	// Rule state transitions (begin, end, while) are legitimate anywhere in
+	// that range, including zero width matches at or past the bare line
+	// end. Tokens are clamped back to the bare line on return.
+	scanLen := len(scanLine)
+
 	pos := startPos
 loop:
-	for pos < lineLen {
+	for pos <= scanLen {
 		if !deadline.IsZero() && time.Now().After(deadline) {
 			if pos < tokenEnd {
 				builder.produce(tokenEnd, state.scopeSlice())
 			}
-			return builder.finish(), state, true, nil
+			return clampTokens(builder.finish(), tokenEnd), state, true, nil
 		}
 
 		top := state.top()
@@ -93,7 +97,7 @@ loop:
 
 		mr = pickBestMatch(mr, injMatch, injPriority)
 
-		if mr == nil || mr.match.Captures[0].Start >= lineLen {
+		if mr == nil {
 			if pos < tokenEnd {
 				builder.produce(tokenEnd, state.scopeSlice())
 			}
@@ -103,38 +107,20 @@ loop:
 		// A begin match that consumes the full scan string must record
 		// BeginCapturedEOL, which seeds anchorPosition = 0 for while rule
 		// checks on the next line. vscode-textmate computes the flag as
-		// end == lineLength on unclamped indices (tokenizeString.ts line
-		// 181). The fixture generator feeds vscode-textmate lines that
-		// keep their real newline, and the engine appends one more, so
-		// lineLength there equals len(scanLine) here: real newline plus
-		// sentinel. The flag is true only when the match consumes both.
-		// Captured before the clamp below, which would otherwise make the
-		// condition unreachable. Note this follows the golden fixtures'
-		// line convention, not npm Shiki's bare line splitting; see
-		// my-docs/official/fidelity.md.
-		capturedEOL := mr.match.Captures[0].End == len(scanLine)
+		// end == lineLength (tokenizeString.ts line 181), where lineLength
+		// counts the bare line plus the engine's appended newline. scanLine
+		// here is exactly that: bare line plus sentinel.
+		capturedEOL := mr.match.Captures[0].End == scanLen
 
-		// Clamp capture positions to the original line boundary.
-		// The scanner operates on scanLine (with sentinel \n), but
-		// token production must stay within the real line.
-		for i := range mr.match.Captures {
-			if mr.match.Captures[i].Start > lineLen {
-				mr.match.Captures[i].Start = lineLen
-			}
-			if mr.match.Captures[i].End > lineLen {
-				mr.match.Captures[i].End = lineLen
-			}
-		}
-
+		// Captures stay unclamped: vscode-textmate feeds raw indices to
+		// every handler, so positions, anchor updates, and rule state
+		// transitions may land inside the sentinel newline. Token output
+		// is clamped back to the bare line in clampTokens on return.
 		matchStart := mr.match.Captures[0].Start
 		matchEnd := mr.match.Captures[0].End
 
 		if matchStart > pos {
-			gapEnd := matchStart
-			if gapEnd > tokenEnd {
-				gapEnd = tokenEnd
-			}
-			builder.produce(gapEnd, state.scopeSlice())
+			builder.produce(matchStart, state.scopeSlice())
 		}
 
 		hasAdvanced := matchEnd > pos
@@ -198,10 +184,29 @@ loop:
 			isFirstLine = false
 		}
 	}
-	if len(line) > 0 && line[len(line)-1] == '\n' {
-		builder.finalize(len(line))
+	return clampTokens(builder.finish(), tokenEnd), state, false, nil
+}
+
+// clampTokens trims token spans back to the bare line. The tokenizer scans
+// and transitions rule state across the sentinel newline exactly like
+// vscode-textmate, whose emitted tokens may cover its appended newline;
+// Shiki clamps them away on the consumer side, and this is the equivalent
+// step here. Tokens fully inside the sentinel are dropped.
+func clampTokens(tokens []Token, tokenEnd int) []Token {
+	out := tokens[:0]
+	for _, tok := range tokens {
+		if tok.Start >= tokenEnd {
+			continue
+		}
+		if tok.End > tokenEnd {
+			tok.End = tokenEnd
+		}
+		if tok.Start >= tok.End {
+			continue
+		}
+		out = append(out, tok)
 	}
-	return builder.finish(), state, false, nil
+	return out
 }
 
 func getActivePatterns(state *StateStack, g *grammar.Grammar) ([]grammar.Rule, *grammar.EndRule) {

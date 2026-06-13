@@ -2,6 +2,7 @@ package fidelity_test
 
 import (
 	"context"
+	"flag"
 	"os"
 	"path/filepath"
 	"slices"
@@ -25,6 +26,9 @@ var (
 	goldenThemeStressDir = shared.FixtureGoldenThemeStressDir
 	goldenAllDir         = shared.FixtureGoldenAllDir
 )
+
+// updateReport regenerates FIDELITY.md when passed via -args -update.
+var updateReport = flag.Bool("update", false, "regenerate FIDELITY.md from the golden fixtures")
 
 // runGoldenSuite loads fixtures from dir using core.FS(), runs nuri over each, and compares.
 func runGoldenSuite(t *testing.T, dir string) (*fidelity.FidelityReport, []string) {
@@ -248,16 +252,8 @@ func TestFidelityReport(t *testing.T) {
 	slices.Sort(themes)
 	md := fidelity.RenderMarkdown(report, themes)
 
-	update := false
-	for _, arg := range os.Args {
-		if arg == "-update" {
-			update = true
-			break
-		}
-	}
-
 	reportPath := filepath.Join("..", "..", "FIDELITY.md")
-	if update {
+	if *updateReport {
 		if err := os.WriteFile(reportPath, []byte(md), 0644); err != nil {
 			t.Fatalf("write FIDELITY.md: %v", err)
 		}

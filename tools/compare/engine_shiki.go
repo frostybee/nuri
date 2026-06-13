@@ -20,6 +20,7 @@ type shikiOutput struct {
 	Lang   string  `json:"lang"`
 	ColdMs float64 `json:"coldMs"`
 	WarmMs float64 `json:"warmMs"`
+	AllocB int64   `json:"allocB"`
 	Tokens int     `json:"tokens"`
 	Scopes int     `json:"scopes"`
 	Dump   string  `json:"dump"`
@@ -46,7 +47,7 @@ func benchShiki(inputs []Input, iters int, theme string) (map[string]EngineResul
 	}
 	tmpFile.Close()
 
-	cmd := exec.Command("node", filepath.Join(scriptDir, "shiki_bench.mjs"),
+	cmd := exec.Command("node", "--expose-gc", filepath.Join(scriptDir, "shiki_bench.mjs"),
 		tmpFile.Name(), fmt.Sprintf("%d", iters), theme)
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
@@ -68,6 +69,7 @@ func benchShiki(inputs []Input, iters int, theme string) (map[string]EngineResul
 		results[so.Name] = EngineResult{
 			ColdMs: so.ColdMs,
 			WarmMs: so.WarmMs,
+			AllocB: so.AllocB,
 			Tokens: so.Tokens,
 			Scopes: so.Scopes,
 		}

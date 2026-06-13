@@ -59,17 +59,11 @@ func Tokenize(
 		state.resetForNewLine()
 
 		// MaxLineLength pre-filter: skip tokenization for oversized lines.
-		if opts.MaxLineLength > 0 {
-			contentLen := len(line)
-			if contentLen > 0 && line[contentLen-1] == '\n' {
-				contentLen--
-			}
-			if contentLen > opts.MaxLineLength {
-				tok := Token{Scopes: state.scopeSlice(), Start: 0, End: contentLen}
-				result.Lines = append(result.Lines, []Token{tok})
-				result.Diagnostics = append(result.Diagnostics, Diagnostic{Line: i, Kind: "too_long"})
-				continue
-			}
+		if opts.MaxLineLength > 0 && len(line) > opts.MaxLineLength {
+			tok := Token{Scopes: state.scopeSlice(), Start: 0, End: len(line)}
+			result.Lines = append(result.Lines, []Token{tok})
+			result.Diagnostics = append(result.Diagnostics, Diagnostic{Line: i, Kind: "too_long"})
+			continue
 		}
 
 		// Compute per-line deadline for soft timeout.
@@ -100,11 +94,7 @@ func Tokenize(
 		}()
 
 		if panicked {
-			contentLen := len(line)
-			if contentLen > 0 && line[contentLen-1] == '\n' {
-				contentLen--
-			}
-			tokens = []Token{{Scopes: state.scopeSlice(), Start: 0, End: contentLen}}
+			tokens = []Token{{Scopes: state.scopeSlice(), Start: 0, End: len(line)}}
 			newState = state
 			result.Diagnostics = append(result.Diagnostics, Diagnostic{Line: i, Kind: "panic"})
 		} else if lineErr != nil {
@@ -120,9 +110,11 @@ func Tokenize(
 	return result, nil
 }
 
-// splitLines splits code into lines, each including its trailing \n (the
-// final line keeps whatever it has). Lines are views into code — zero
-// copies; callers never mutate line bytes.
+// splitLines splits code into bare lines with terminators stripped: the
+// trailing \n and a directly preceding \r are excluded. This matches how
+// Shiki feeds lines to vscode-textmate, which appends its own newline
+// before scanning. Lines are views into code, zero copies; callers never
+// mutate line bytes.
 func splitLines(code []byte) [][]byte {
 	n := bytes.Count(code, []byte{'\n'})
 	if len(code) > 0 && code[len(code)-1] != '\n' {
@@ -132,7 +124,11 @@ func splitLines(code []byte) [][]byte {
 	start := 0
 	for i, b := range code {
 		if b == '\n' {
-			lines = append(lines, code[start:i+1])
+			end := i
+			if end > start && code[end-1] == '\r' {
+				end--
+			}
+			lines = append(lines, code[start:end])
 			start = i + 1
 		}
 	}

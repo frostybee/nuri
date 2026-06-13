@@ -48,27 +48,6 @@ func (b *lineTokenBuilder) produce(endPos int, scopes []string) {
 	b.lastEndPos = endPos
 }
 
-// finalize strips the trailing newline from the last token. Lines are
-// tokenized with a re-added \n (needed for regex anchors), but the
-// renderer adds its own \n between line spans. Without this, every
-// line break renders twice. Matches Giallo's TokenAccumulator.finalize().
-func (b *lineTokenBuilder) finalize(lineLen int) {
-	if len(b.tokens) == 0 || lineLen == 0 {
-		return
-	}
-	last := &b.tokens[len(b.tokens)-1]
-	if last.Start == lineLen-1 {
-		b.tokens = b.tokens[:len(b.tokens)-1]
-		return
-	}
-	if last.End == lineLen {
-		last.End--
-		if last.Start >= last.End {
-			b.tokens = b.tokens[:len(b.tokens)-1]
-		}
-	}
-}
-
 func (b *lineTokenBuilder) finish() []Token {
 	return b.tokens
 }

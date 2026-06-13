@@ -1,6 +1,6 @@
 export PATH=$HOME/go-sdk/go/bin:$PATH
 export CGO_ENABLED=1
-cd /mnt/d/dev/my-repos/irosashi
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 go version
 echo "=== RACE TESTS ==="
 go test -race -count=1 $(go list ./... | grep -v internal/fidelity)

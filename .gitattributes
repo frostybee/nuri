@@ -1,2 +1,3 @@
 *.json.gz binary
 provenance.lock.json text eol=lf
+tools/race-wsl.sh text eol=lf

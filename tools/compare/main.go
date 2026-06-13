@@ -87,7 +87,7 @@ func main() {
 		}
 	}
 
-	printResults(snap)
+	printResults(snap, inputs)
 
 	if *save {
 		dir, err := saveSnapshot(snap, tokenDumps)
@@ -102,7 +102,7 @@ func main() {
 			prev, _ = loadSnapshot(*comparePath)
 		}
 
-		md := generateMarkdown(snap, prev)
+		md := generateMarkdown(snap, prev, inputs)
 		if err := os.WriteFile("RESULTS.md", []byte(md), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "write RESULTS.md: %v\n", err)
 			os.Exit(1)
@@ -114,7 +114,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "load previous snapshot: %v\n", err)
 			os.Exit(1)
 		}
-		md := generateMarkdown(snap, prev)
+		md := generateMarkdown(snap, prev, inputs)
 		fmt.Println()
 		fmt.Println(md)
 	}

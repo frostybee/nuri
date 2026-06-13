@@ -135,7 +135,9 @@ async function main() {
 
       for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
         const lineText = lines[lineIdx];
-        const lineInput = lineText + (lineIdx < lines.length - 1 ? '\n' : '');
+        // Bare line, matching npm Shiki: vscode-textmate appends its own
+        // newline internally (grammar.ts:380).
+        const lineInput = lineText;
 
         const t1Result = grammar.tokenizeLine(lineInput, ruleStack);
         const t2Result = grammar.tokenizeLine2(lineInput, binaryRuleStack);

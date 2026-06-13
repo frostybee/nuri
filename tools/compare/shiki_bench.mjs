@@ -22,15 +22,20 @@ for (const input of inputs) {
   h.codeToHtml(input.code, { lang: input.lang, theme });
   const coldMs = performance.now() - t0;
 
-  // Warm: N iterations, collect durations for median.
+  // Warm: N iterations, collect durations for median + memory delta.
+  global.gc();
+  const memBefore = process.memoryUsage();
   const durations = [];
   for (let i = 0; i < iters; i++) {
     const t = performance.now();
     h.codeToHtml(input.code, { lang: input.lang, theme });
     durations.push(performance.now() - t);
   }
+  const memAfter = process.memoryUsage();
   durations.sort((a, b) => a - b);
   const warmMs = durations[Math.floor(durations.length / 2)];
+  const heapDelta = Math.max(0, memAfter.heapUsed - memBefore.heapUsed);
+  const heapPerOp = Math.round(heapDelta / iters);
 
   // Fidelity: token + scope counting + token dump.
   const result = h.codeToTokens(input.code, { lang: input.lang, theme, includeExplanation: true });
@@ -65,6 +70,7 @@ for (const input of inputs) {
     lang: input.lang,
     coldMs: Math.round(coldMs * 1000) / 1000,
     warmMs: Math.round(warmMs * 1000) / 1000,
+    allocB: heapPerOp,
     tokens,
     scopes: scopeSet.size,
     dump: dumpLines.join('\n') + '\n',

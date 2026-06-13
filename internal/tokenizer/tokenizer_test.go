@@ -605,3 +605,33 @@ func assertTokenScope(t *testing.T, tokens []Token, scopeSuffix, textContent str
 	}
 	t.Errorf("no token with scope %q found (looking for text %q)", scopeSuffix, textContent)
 }
+
+func TestCRLFEquivalence(t *testing.T) {
+	ctx := context.Background()
+	g := loadMiniGrammar(t, "match_only.json")
+	onigLib := newTestOnigLib(t)
+
+	lf, err := Tokenize(ctx, []byte("if x\nreturn 42\n"), g, onigLib, TokenizeOptions{})
+	if err != nil {
+		t.Fatalf("Tokenize LF: %v", err)
+	}
+	crlf, err := Tokenize(ctx, []byte("if x\r\nreturn 42\r\n"), g, onigLib, TokenizeOptions{})
+	if err != nil {
+		t.Fatalf("Tokenize CRLF: %v", err)
+	}
+
+	if len(lf.Lines) != len(crlf.Lines) {
+		t.Fatalf("line count: LF %d, CRLF %d", len(lf.Lines), len(crlf.Lines))
+	}
+	for i := range lf.Lines {
+		if len(lf.Lines[i]) != len(crlf.Lines[i]) {
+			t.Fatalf("line %d token count: LF %d, CRLF %d", i, len(lf.Lines[i]), len(crlf.Lines[i]))
+		}
+		for j := range lf.Lines[i] {
+			a, b := lf.Lines[i][j], crlf.Lines[i][j]
+			if a.Start != b.Start || a.End != b.End {
+				t.Errorf("line %d token %d: LF [%d:%d], CRLF [%d:%d]", i, j, a.Start, a.End, b.Start, b.End)
+			}
+		}
+	}
+}

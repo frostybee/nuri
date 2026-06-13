@@ -534,7 +534,7 @@ func (h *Highlighter) buildResult(
 		for _, tok := range tokLine {
 			var content string
 			if line != nil && tok.Start >= 0 && tok.End <= len(line) {
-				content = strings.TrimRight(string(line[tok.Start:tok.End]), "\n")
+				content = string(line[tok.Start:tok.End])
 			}
 			if content == "" {
 				continue
@@ -592,7 +592,7 @@ func (h *Highlighter) buildResultMulti(
 		for _, tok := range tokLine {
 			var content string
 			if line != nil && tok.Start >= 0 && tok.End <= len(line) {
-				content = strings.TrimRight(string(line[tok.Start:tok.End]), "\n")
+				content = string(line[tok.Start:tok.End])
 			}
 			if content == "" {
 				continue
@@ -786,9 +786,6 @@ func (h *Highlighter) plaintextFallback(code string, thm *theme.Theme) *ast.Toke
 	themed := make([][]ast.ThemedToken, len(raw))
 	for i, line := range raw {
 		text := string(line)
-		if len(text) > 0 && text[len(text)-1] == '\n' {
-			text = text[:len(text)-1]
-		}
 		if text == "" && i == len(raw)-1 {
 			continue
 		}
@@ -863,9 +860,10 @@ func (h *Highlighter) LoadedThemes() []string {
 	return h.reg.LoadedThemes()
 }
 
-// splitLines splits code into lines, each including its trailing \n (the
-// final line keeps whatever it has). Lines are views into code — zero
-// copies; callers never mutate line bytes.
+// splitLines splits code into bare lines with terminators stripped: the
+// trailing \n and a directly preceding \r are excluded, mirroring the
+// tokenizer's line convention. Lines are views into code, zero copies;
+// callers never mutate line bytes.
 func splitLines(code []byte) [][]byte {
 	n := bytes.Count(code, []byte{'\n'})
 	if len(code) > 0 && code[len(code)-1] != '\n' {
@@ -875,7 +873,11 @@ func splitLines(code []byte) [][]byte {
 	start := 0
 	for i, b := range code {
 		if b == '\n' {
-			lines = append(lines, code[start:i+1])
+			end := i
+			if end > start && code[end-1] == '\r' {
+				end--
+			}
+			lines = append(lines, code[start:end])
 			start = i + 1
 		}
 	}

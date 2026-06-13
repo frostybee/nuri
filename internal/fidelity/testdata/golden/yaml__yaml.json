@@ -1578,29 +1578,19 @@
             "end": 10,
             "text": "          ",
             "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "n",
-            "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
           },
           {
-            "start": 11,
+            "start": 10,
             "end": 31,
-            "text": "pm run build:compile",
+            "text": "npm run build:compile",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1609,32 +1599,11 @@
         [
           {
             "start": 0,
-            "end": 10,
-            "text": "          ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "n",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#9ECBFF",
-            "fontStyle": 0
-          },
-          {
-            "start": 11,
             "end": 31,
-            "text": "pm run build:package",
+            "text": "          npm run build:package",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1815,29 +1784,19 @@
             "end": 10,
             "text": "          ",
             "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "i",
-            "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
           },
           {
-            "start": 11,
+            "start": 10,
             "end": 80,
-            "text": "f [ \"$(git diff --ignore-space-at-eol dist/ | wc -l)\" -gt \"0\" ]; then",
+            "text": "if [ \"$(git diff --ignore-space-at-eol dist/ | wc -l)\" -gt \"0\" ]; then",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1846,32 +1805,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "e",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#9ECBFF",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 79,
-            "text": "cho \"Detected uncommitted changes after build.  See status below:\"",
+            "text": "            echo \"Detected uncommitted changes after build.  See status below:\"",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1880,32 +1818,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "g",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#9ECBFF",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 20,
-            "text": "it diff",
+            "text": "            git diff",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1914,32 +1831,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "e",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#9ECBFF",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 18,
-            "text": "xit 1",
+            "text": "            exit 1",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -1948,32 +1844,11 @@
         [
           {
             "start": 0,
-            "end": 10,
-            "text": "          ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#E1E4E8",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "f",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#9ECBFF",
-            "fontStyle": 0
-          },
-          {
-            "start": 11,
             "end": 12,
-            "text": "i",
+            "text": "          fi",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#9ECBFF",
             "fontStyle": 0
@@ -4082,29 +3957,19 @@
             "end": 10,
             "text": "          ",
             "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "n",
-            "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
           },
           {
-            "start": 11,
+            "start": 10,
             "end": 31,
-            "text": "pm run build:compile",
+            "text": "npm run build:compile",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4113,32 +3978,11 @@
         [
           {
             "start": 0,
-            "end": 10,
-            "text": "          ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "n",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#032F62",
-            "fontStyle": 0
-          },
-          {
-            "start": 11,
             "end": 31,
-            "text": "pm run build:package",
+            "text": "          npm run build:package",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4319,29 +4163,19 @@
             "end": 10,
             "text": "          ",
             "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "i",
-            "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
           },
           {
-            "start": 11,
+            "start": 10,
             "end": 80,
-            "text": "f [ \"$(git diff --ignore-space-at-eol dist/ | wc -l)\" -gt \"0\" ]; then",
+            "text": "if [ \"$(git diff --ignore-space-at-eol dist/ | wc -l)\" -gt \"0\" ]; then",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4350,32 +4184,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "e",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#032F62",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 79,
-            "text": "cho \"Detected uncommitted changes after build.  See status below:\"",
+            "text": "            echo \"Detected uncommitted changes after build.  See status below:\"",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4384,32 +4197,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "g",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#032F62",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 20,
-            "text": "it diff",
+            "text": "            git diff",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4418,32 +4210,11 @@
         [
           {
             "start": 0,
-            "end": 12,
-            "text": "            ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 12,
-            "end": 13,
-            "text": "e",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#032F62",
-            "fontStyle": 0
-          },
-          {
-            "start": 13,
             "end": 18,
-            "text": "xit 1",
+            "text": "            exit 1",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0
@@ -4452,32 +4223,11 @@
         [
           {
             "start": 0,
-            "end": 10,
-            "text": "          ",
-            "scopes": [
-              "source.yaml"
-            ],
-            "color": "#24292E",
-            "fontStyle": 0
-          },
-          {
-            "start": 10,
-            "end": 11,
-            "text": "f",
-            "scopes": [
-              "source.yaml",
-              "string.unquoted.plain.out.yaml"
-            ],
-            "color": "#032F62",
-            "fontStyle": 0
-          },
-          {
-            "start": 11,
             "end": 12,
-            "text": "i",
+            "text": "          fi",
             "scopes": [
               "source.yaml",
-              "string.unquoted.plain.out.yaml"
+              "string.unquoted.block.yaml"
             ],
             "color": "#032F62",
             "fontStyle": 0

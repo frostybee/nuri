@@ -7,7 +7,7 @@
   ],
   "repository": {
     "block": {
-      "begin": "^>>>\\n+",
+      "begin": "^>>>\\n",
       "while": "\\G\\.",
       "name": "meta.block.test",
       "patterns": [

@@ -104,7 +104,7 @@ func parseRule(raw rawRule, ids *idCounter) (Rule, error) {
 		if err != nil {
 			return nil, fmt.Errorf("begin/while beginCaptures: %w", err)
 		}
-		whileCaps, err := parseCaptures(raw.WhileCaptures, ids)
+		whileCaps, err := parseCaptures(mergeCaptures(raw.WhileCaptures, raw.Captures), ids)
 		if err != nil {
 			return nil, fmt.Errorf("begin/while whileCaptures: %w", err)
 		}

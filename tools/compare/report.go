@@ -81,7 +81,7 @@ func inputNames(s *Snapshot) []string {
 	return names
 }
 
-func generateMarkdown(s *Snapshot, prev *Snapshot) string {
+func generateMarkdown(s *Snapshot, prev *Snapshot, inputs []Input) string {
 	var sb strings.Builder
 	sb.WriteString("# Nuri vs Shiki vs Chroma — Benchmark Results\n\n")
 	sb.WriteString(fmt.Sprintf("*Generated: %s | Machine: %s | Warm iterations: %d | Theme: %s*\n", s.Timestamp, s.Machine, s.Iters, s.Theme))
@@ -100,18 +100,22 @@ func generateMarkdown(s *Snapshot, prev *Snapshot) string {
 	hasShiki := hasEngine(s, "shiki")
 	hasChroma := hasEngine(s, "chroma")
 
+	// Inputs metadata table.
+	sb.WriteString("## Inputs\n\n")
+	writeInputsTable(&sb, inputs, names)
+
 	// Speed table.
-	sb.WriteString("## Speed (warm median, ms/op)\n\n")
-	writeSpeedTable(&sb, s, prev, names, hasNuri, hasNuriNoInt, hasShiki, hasChroma)
+	sb.WriteString("\n## Speed (warm median, ms/op)\n\n")
+	writeSpeedTable(&sb, s, prev, names, inputs, hasNuri, hasNuriNoInt, hasShiki, hasChroma)
 
 	// Cold start table.
 	sb.WriteString("\n## Cold start (first call, ms)\n\n")
 	writeColdTable(&sb, s, prev, names, hasNuri, hasShiki, hasChroma)
 
-	// Allocations table (Go engines only).
-	if hasNuri || hasNuriNoInt || hasChroma {
-		sb.WriteString("\n## Allocations (Go engines only, per warm call)\n\n")
-		writeAllocTable(&sb, s, names, hasNuri, hasNuriNoInt, hasChroma)
+	// Allocations table.
+	if hasNuri || hasNuriNoInt || hasShiki || hasChroma {
+		sb.WriteString("\n## Allocations (per warm call)\n\n")
+		writeAllocTable(&sb, s, names, hasNuri, hasNuriNoInt, hasShiki, hasChroma)
 	}
 
 	// Fidelity table.
@@ -132,7 +136,22 @@ func hasEngine(s *Snapshot, engine string) bool {
 	return false
 }
 
-func writeSpeedTable(sb *strings.Builder, s, prev *Snapshot, names []string, hasNuri, hasNuriNoInt, hasShiki, hasChroma bool) {
+func writeInputsTable(sb *strings.Builder, inputs []Input, names []string) {
+	sb.WriteString("| Input | Language | Bytes | Lines |\n")
+	sb.WriteString("|---|---|---:|---:|\n")
+
+	byName := make(map[string]Input, len(inputs))
+	for _, inp := range inputs {
+		byName[inp.Name] = inp
+	}
+	for _, name := range names {
+		inp := byName[name]
+		lines := strings.Count(inp.Code, "\n")
+		sb.WriteString(fmt.Sprintf("| %s | %s | %d | %d |\n", inp.Name, inp.Lang, len(inp.Code), lines))
+	}
+}
+
+func writeSpeedTable(sb *strings.Builder, s, prev *Snapshot, names []string, inputs []Input, hasNuri, hasNuriNoInt, hasShiki, hasChroma bool) {
 	header := "| Input |"
 	sep := "|---|"
 	if hasNuri {
@@ -154,39 +173,49 @@ func writeSpeedTable(sb *strings.Builder, s, prev *Snapshot, names []string, has
 	sb.WriteString(header + "\n")
 	sb.WriteString(sep + "\n")
 
+	bytesByName := make(map[string]int, len(inputs))
+	for _, inp := range inputs {
+		bytesByName[inp.Name] = len(inp.Code)
+	}
+
 	for _, name := range names {
 		row := fmt.Sprintf("| %s |", name)
 		engines := s.Results[name]
+		b := bytesByName[name]
 		if hasNuri {
-			row += fmtSpeedCell(engines, "nuri", prev, name) + " |"
+			row += fmtSpeedCell(engines, "nuri", prev, name, b) + " |"
 		}
 		if hasNuriNoInt {
-			row += fmtSpeedCell(engines, "nuri-no-interrupt", prev, name) + " |"
+			row += fmtSpeedCell(engines, "nuri-no-interrupt", prev, name, b) + " |"
 		}
 		if hasShiki {
-			row += fmtSpeedCell(engines, "shiki", prev, name) + " |"
+			row += fmtSpeedCell(engines, "shiki", prev, name, b) + " |"
 		}
 		if hasChroma {
-			row += fmtSpeedCell(engines, "chroma", prev, name) + " |"
+			row += fmtSpeedCell(engines, "chroma", prev, name, b) + " |"
 		}
 		sb.WriteString(row + "\n")
 	}
 }
 
-func fmtSpeedCell(engines map[string]EngineResult, engine string, prev *Snapshot, name string) string {
+func fmtSpeedCell(engines map[string]EngineResult, engine string, prev *Snapshot, name string, inputBytes int) string {
 	r, ok := engines[engine]
 	if !ok {
 		return " —"
 	}
 	cell := fmt.Sprintf(" %.2f", r.WarmMs)
+	if r.WarmMs > 0 && inputBytes > 0 {
+		kbPerSec := (float64(inputBytes) / 1024.0) / (r.WarmMs / 1000.0)
+		cell += fmt.Sprintf(" (%.0f KB/s)", kbPerSec)
+	}
 	if prev != nil {
 		if pe, ok := prev.Results[name]; ok {
 			if pr, ok := pe[engine]; ok && pr.WarmMs > 0 {
 				pct := (r.WarmMs - pr.WarmMs) / pr.WarmMs * 100
 				if pct > 0 {
-					cell += fmt.Sprintf(" (+%.0f%%)", pct)
+					cell += fmt.Sprintf(" [+%.0f%%]", pct)
 				} else {
-					cell += fmt.Sprintf(" (%.0f%%)", pct)
+					cell += fmt.Sprintf(" [%.0f%%]", pct)
 				}
 			}
 		}
@@ -240,7 +269,7 @@ func writeColdTable(sb *strings.Builder, s, prev *Snapshot, names []string, hasN
 	}
 }
 
-func writeAllocTable(sb *strings.Builder, s *Snapshot, names []string, hasNuri, hasNuriNoInt, hasChroma bool) {
+func writeAllocTable(sb *strings.Builder, s *Snapshot, names []string, hasNuri, hasNuriNoInt, hasShiki, hasChroma bool) {
 	header := "| Input |"
 	sep := "|---|"
 	if hasNuri {
@@ -249,6 +278,10 @@ func writeAllocTable(sb *strings.Builder, s *Snapshot, names []string, hasNuri, 
 	}
 	if hasNuriNoInt {
 		header += " Nuri (no-interrupt) |"
+		sep += "---:|"
+	}
+	if hasShiki {
+		header += " Shiki |"
 		sep += "---:|"
 	}
 	if hasChroma {
@@ -267,6 +300,9 @@ func writeAllocTable(sb *strings.Builder, s *Snapshot, names []string, hasNuri, 
 		if hasNuriNoInt {
 			row += fmtAllocCell(engines, "nuri-no-interrupt") + " |"
 		}
+		if hasShiki {
+			row += fmtAllocCell(engines, "shiki") + " |"
+		}
 		if hasChroma {
 			row += fmtAllocCell(engines, "chroma") + " |"
 		}
@@ -278,6 +314,12 @@ func fmtAllocCell(engines map[string]EngineResult, engine string) string {
 	r, ok := engines[engine]
 	if !ok {
 		return " —"
+	}
+	if r.Allocs == 0 && r.AllocB == 0 {
+		return " —"
+	}
+	if r.Allocs == 0 {
+		return fmt.Sprintf(" %s", fmtBytes(r.AllocB))
 	}
 	return fmt.Sprintf(" %s / %s", fmtAllocs(r.Allocs), fmtBytes(r.AllocB))
 }
@@ -336,7 +378,7 @@ func writeFidelityTable(sb *strings.Builder, s *Snapshot, names []string, hasNur
 	}
 }
 
-func printResults(s *Snapshot) {
+func printResults(s *Snapshot, inputs []Input) {
 	names := inputNames(s)
 
 	fmt.Println()
@@ -346,9 +388,16 @@ func printResults(s *Snapshot) {
 	}
 	fmt.Println()
 
+	bytesByName := make(map[string]int, len(inputs))
+	linesByName := make(map[string]int, len(inputs))
+	for _, inp := range inputs {
+		bytesByName[inp.Name] = len(inp.Code)
+		linesByName[inp.Name] = strings.Count(inp.Code, "\n")
+	}
+
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "INPUT\tENGINE\tCOLD (ms)\tWARM (ms)\tALLOCS\tMEMORY\tTOKENS\tSCOPES\t")
-	fmt.Fprintln(tw, "-----\t------\t---------\t---------\t------\t------\t------\t------\t")
+	fmt.Fprintln(tw, "INPUT\tBYTES\tLINES\tENGINE\tCOLD (ms)\tWARM (ms)\tKB/s\tALLOCS\tMEMORY\tTOKENS\tSCOPES\t")
+	fmt.Fprintln(tw, "-----\t-----\t-----\t------\t---------\t---------\t----\t------\t------\t------\t------\t")
 
 	for _, name := range names {
 		engines := s.Results[name]
@@ -357,7 +406,7 @@ func printResults(s *Snapshot) {
 			engineNames = append(engineNames, e)
 		}
 		sort.Strings(engineNames)
-		for _, eng := range engineNames {
+		for i, eng := range engineNames {
 			r := engines[eng]
 			allocStr := "—"
 			memStr := "—"
@@ -365,7 +414,15 @@ func printResults(s *Snapshot) {
 				allocStr = fmtAllocs(r.Allocs)
 				memStr = fmtBytes(r.AllocB)
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%.2f\t%.2f\t%s\t%s\t%d\t%d\t\n", name, eng, r.ColdMs, r.WarmMs, allocStr, memStr, r.Tokens, r.Scopes)
+			kbps := "—"
+			if r.WarmMs > 0 && bytesByName[name] > 0 {
+				kbps = fmt.Sprintf("%.0f", (float64(bytesByName[name])/1024.0)/(r.WarmMs/1000.0))
+			}
+			label, bStr, lStr := name, fmt.Sprintf("%d", bytesByName[name]), fmt.Sprintf("%d", linesByName[name])
+			if i > 0 {
+				label, bStr, lStr = "", "", ""
+			}
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%.2f\t%.2f\t%s\t%s\t%s\t%d\t%d\t\n", label, bStr, lStr, eng, r.ColdMs, r.WarmMs, kbps, allocStr, memStr, r.Tokens, r.Scopes)
 		}
 	}
 	tw.Flush()
