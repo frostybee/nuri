@@ -33,6 +33,7 @@ type options struct {
 	poolSize            int
 	maxLineLength       int
 	timeoutMs           int
+	minContrast         float64
 	regexInterruption   bool
 	compilationCacheDir string
 	grammars            []grammarEntry
@@ -132,6 +133,14 @@ func WithDefaults(defaults CodeToHTMLOptions) Option {
 	}
 }
 
+// WithMinContrast sets the minimum WCAG 2.1 contrast ratio between syntax
+// token foreground colors and the editor background. Tokens that fail the
+// check are adjusted at theme load time (zero per-token cost). The default
+// is 5.5 (WCAG AA enhanced). Set to 0 to disable and preserve raw theme colors.
+func WithMinContrast(ratio float64) Option {
+	return func(o *options) { o.minContrast = ratio }
+}
+
 // WithRegexInterruption toggles WASM-level regex interruption (default true).
 // When enabled, regex execution compiled into the WASM runtime checks for
 // context cancellation, so a runaway pattern can be stopped mid-search at
@@ -153,6 +162,7 @@ func WithCompilationCacheDir(dir string) Option {
 func defaultOptions() options {
 	return options{
 		poolSize:          runtime.NumCPU(),
+		minContrast:       5.5,
 		regexInterruption: true,
 	}
 }

@@ -53,7 +53,7 @@ func runGoldenSuiteWithFS(t *testing.T, dir string, fsys fs.FS) (*fidelity.Fidel
 	}
 
 	ctx := context.Background()
-	h, err := nuri.New(ctx, nuri.WithFS(fsys))
+	h, err := nuri.New(ctx, nuri.WithFS(fsys), nuri.WithMinContrast(0))
 	if err != nil {
 		t.Fatalf("nuri.New: %v", err)
 	}
@@ -227,7 +227,7 @@ func TestFidelityReport(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	h, err := nuri.New(ctx, nuri.WithFS(core.FS()))
+	h, err := nuri.New(ctx, nuri.WithFS(core.FS()), nuri.WithMinContrast(0))
 	if err != nil {
 		t.Fatalf("nuri.New: %v", err)
 	}

@@ -64,8 +64,12 @@ type Highlighter struct {
 	reg           *registry.Registry
 	maxLineLength int
 	timeoutMs     int
+	minContrast   float64
 	defaults      *ast.CodeToHTMLOptions
 	closeOnce     sync.Once
+
+	adjustedMu sync.RWMutex
+	adjusted   map[string]*theme.Theme
 }
 
 // New compiles the WASM engine, instantiates a pool of WASM instances,
@@ -139,7 +143,9 @@ func New(ctx context.Context, opts ...Option) (*Highlighter, error) {
 		reg:           reg,
 		maxLineLength: cfg.maxLineLength,
 		timeoutMs:     cfg.timeoutMs,
+		minContrast:   cfg.minContrast,
 		defaults:      cfg.defaults,
+		adjusted:      make(map[string]*theme.Theme),
 	}, nil
 }
 
@@ -155,6 +161,54 @@ func (h *Highlighter) resolveTokenizeOpts(maxLine, timeout *int) tokenizer.Token
 		opts.TimeoutMs = *timeout
 	}
 	return opts
+}
+
+// getTheme retrieves a theme by name and applies contrast adjustment if
+// minContrast > 0. Adjusted themes are cached per name so each theme is
+// processed exactly once regardless of how many blocks are rendered.
+func (h *Highlighter) getTheme(name string) (*theme.Theme, error) {
+	if h.minContrast <= 0 {
+		return h.reg.GetTheme(name)
+	}
+
+	h.adjustedMu.RLock()
+	if t, ok := h.adjusted[name]; ok {
+		h.adjustedMu.RUnlock()
+		return t, nil
+	}
+	h.adjustedMu.RUnlock()
+
+	thm, err := h.reg.GetTheme(name)
+	if err != nil {
+		return nil, err
+	}
+
+	t := adjustThemeContrast(thm, h.minContrast)
+
+	h.adjustedMu.Lock()
+	h.adjusted[name] = t
+	h.adjustedMu.Unlock()
+	return t, nil
+}
+
+// adjustThemeContrast returns a shallow copy of the theme with all token
+// foreground colors adjusted to meet the minimum contrast ratio against
+// the theme's background.
+func adjustThemeContrast(thm *theme.Theme, minContrast float64) *theme.Theme {
+	bg := thm.DefaultBackground
+
+	cp := *thm
+	cp.DefaultForeground = adjustForeground(cp.DefaultForeground, bg, minContrast)
+
+	cp.TokenColors = make([]theme.TokenColor, len(thm.TokenColors))
+	copy(cp.TokenColors, thm.TokenColors)
+	for i := range cp.TokenColors {
+		fg := cp.TokenColors[i].Settings.Foreground
+		if fg != "" {
+			cp.TokenColors[i].Settings.Foreground = adjustForeground(fg, bg, minContrast)
+		}
+	}
+	return &cp
 }
 
 // Close releases all WASM resources. Safe to call multiple times.
@@ -181,7 +235,7 @@ func (h *Highlighter) CodeToTokens(
 		return h.codeToTokensMulti(ctx, code, opts.Lang, opts.Themes, opts.MaxLineLength, opts.TimeoutMs)
 	}
 
-	thm, err := h.reg.GetTheme(opts.Theme)
+	thm, err := h.getTheme(opts.Theme)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +282,7 @@ func (h *Highlighter) CodeToHighlightedTokens(
 // code block chrome (title bars, copy buttons, terminal frames) use these to
 // style their wrappers consistently with the highlighted code.
 func (h *Highlighter) GetThemeColors(themeName string) (ThemeColors, error) {
-	thm, err := h.reg.GetTheme(themeName)
+	thm, err := h.getTheme(themeName)
 	if err != nil {
 		return ThemeColors{}, err
 	}
@@ -642,7 +696,7 @@ func (h *Highlighter) codeToTokensMulti(
 
 	thms := make(map[string]*theme.Theme, len(keys))
 	for _, k := range keys {
-		thm, err := h.reg.GetTheme(themes[k])
+		thm, err := h.getTheme(themes[k])
 		if err != nil {
 			return nil, err
 		}
