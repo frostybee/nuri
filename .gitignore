@@ -5,6 +5,8 @@ official-docs/
 *.png
 *.txt
 *.svg
+!nuri.svg
+!example-output.svg
 *.log
 
 
