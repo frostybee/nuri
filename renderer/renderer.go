@@ -19,7 +19,7 @@ func BuildTree(result *ast.TokensResult, opts *ast.CodeToHTMLOptions) *ast.Eleme
 	preStyles := make(map[string]string)
 	var preClasses []string
 	if multiTheme {
-		preClasses = []string{"shiki", "nuri-themes"}
+		preClasses = []string{"nuri", "nuri-themes"}
 		for _, k := range result.ThemeNames {
 			preClasses = append(preClasses, k)
 		}
@@ -36,7 +36,7 @@ func BuildTree(result *ast.TokensResult, opts *ast.CodeToHTMLOptions) *ast.Eleme
 			}
 		}
 	} else {
-		preClasses = []string{"shiki", result.ThemeName}
+		preClasses = []string{"nuri", result.ThemeName}
 		preStyles["background-color"] = result.BG
 		preStyles["color"] = result.FG
 	}

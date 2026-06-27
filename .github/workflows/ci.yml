@@ -10,7 +10,7 @@ jobs:
     name: Go Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
@@ -23,7 +23,7 @@ jobs:
     name: Race Detector
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: actions/setup-go@v6
@@ -45,7 +45,7 @@ jobs:
     name: Provenance Verification
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: actions/setup-go@v6
@@ -58,13 +58,13 @@ jobs:
     name: Fixture Freshness
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
       - name: Verify provenance lockfile
@@ -78,7 +78,7 @@ jobs:
     name: Benchmarks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: actions/setup-go@v6
@@ -86,7 +86,7 @@ jobs:
           go-version: "1.25"
       - name: Run benchmarks
         run: go test -bench=. -benchmem -count=5 ./... > bench.txt 2>&1 || true
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: benchmarks
           path: bench.txt

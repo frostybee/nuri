@@ -33,7 +33,7 @@
           }
         ]
       ],
-      "html": "<pre class=\"shiki github-light\"><code><span class=\"line\"><span style=\"color:#D73A49\">package</span><span style=\"color:#24292E\"> </span><span style=\"color:#6F42C1\">main</span></span></code></pre>"
+      "html": "<pre class=\"nuri github-light\"><code><span class=\"line\"><span style=\"color:#D73A49\">package</span><span style=\"color:#24292E\"> </span><span style=\"color:#6F42C1\">main</span></span></code></pre>"
     }
   }
 }

@@ -309,8 +309,8 @@ func TestNoTransformersBackwardCompat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.HasPrefix(html, `<pre class="shiki github-dark"`) {
-		t.Errorf("missing <pre> with shiki class:\n%s", html)
+	if !strings.HasPrefix(html, `<pre class="nuri github-dark"`) {
+		t.Errorf("missing <pre> with nuri class:\n%s", html)
 	}
 	if !strings.Contains(html, `<code>`) {
 		t.Errorf("missing plain <code>:\n%s", html)

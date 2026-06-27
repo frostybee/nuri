@@ -18,8 +18,8 @@ func TestCodeToHTMLGoGitHubDark(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.HasPrefix(html, `<pre class="shiki github-dark"`) {
-		t.Errorf("missing <pre> with shiki class:\n%s", html)
+	if !strings.HasPrefix(html, `<pre class="nuri github-dark"`) {
+		t.Errorf("missing <pre> with nuri class:\n%s", html)
 	}
 	if !strings.Contains(html, `style="background-color:#24292e;color:#e1e4e8"`) {
 		t.Errorf("missing theme styles:\n%s", html)

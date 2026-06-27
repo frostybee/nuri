@@ -196,7 +196,7 @@ func TestStyleValueEscaped(t *testing.T) {
 func TestClassValueEscaped(t *testing.T) {
 	el := &Element{
 		Tag:     "pre",
-		Classes: []string{"shiki", `theme"with&quote`},
+		Classes: []string{"nuri", `theme"with&quote`},
 	}
 	var buf strings.Builder
 	el.WriteTo(&buf)
@@ -204,7 +204,7 @@ func TestClassValueEscaped(t *testing.T) {
 	if strings.Contains(out, `theme"`) {
 		t.Errorf("class value with quote broke out of the attribute: %s", out)
 	}
-	if !strings.Contains(out, `class="shiki theme&quot;with&amp;quote"`) {
+	if !strings.Contains(out, `class="nuri theme&quot;with&amp;quote"`) {
 		t.Errorf("class value not escaped as expected: %s", out)
 	}
 }

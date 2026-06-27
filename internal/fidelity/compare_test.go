@@ -105,8 +105,8 @@ func TestCompareHTMLIdentical(t *testing.T) {
 }
 
 func TestCompareHTMLDifferent(t *testing.T) {
-	want := `<pre class="shiki"><code>hello</code></pre>`
-	got := `<pre class="shiki"><code>world</code></pre>`
+	want := `<pre class="nuri"><code>hello</code></pre>`
+	got := `<pre class="nuri"><code>world</code></pre>`
 	diff := CompareHTML(want, got)
 	if diff == nil {
 		t.Fatal("expected diff, got nil")
