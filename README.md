@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="nuri.svg" alt="Nuri" width="160">
+  <img src="brand/nuri-logo.svg" alt="Nuri" width="160">
 </p>
 
 <h1 align="center">Nuri</h1>

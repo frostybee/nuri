@@ -1,0 +1,102 @@
+site:
+  title: "Nuri"
+  description: "Shiki-fidelity syntax highlighting for Go: 257 languages, 65 themes, no CGO"
+  url: "https://frostybee.github.io"
+  # Page paths are appended relative to the content dir, so this must end at docs/content.
+  edit_url: "https://github.com/frostybee/nuri/edit/main/docs/content"
+  favicon: "/favicon.svg"
+build:
+  base_path: /nuri/
+theme:
+  preset: "docs"
+  dark: true
+  font_family: "'Inter', system-ui, -apple-system, sans-serif"
+
+  # preset: "ocean"        # Try: ocean, forest, rose, clean, minimal, docs, academic
+  # overrides:
+  #   primary: "#6366f1"
+
+social:
+- icon: github
+  label: GitHub
+  url: https://github.com/frostybee/nuri
+
+collections:
+  docs:
+    sort: "order"
+    tabs: false
+    sidebar:
+      collapsed_by_default: true
+toc:
+  enabled: true
+  max_level: 4
+  min_level: 2
+header:
+  links:
+  - label: Tags
+    url: /tags/
+  - label: Changelog
+    url: /docs/changelog
+  search: true
+  social: true
+  theme_toggle: true
+markdown:
+  github_alerts: true
+  katex: true
+  mermaid: true
+  triple_colon_callouts: true
+  typographer: true
+  unsafe: false
+  codeblocks:
+    engine: nuri
+    light_theme: "github-light"
+    dark_theme: "github-dark-default"
+
+head:
+  custom_css:
+    - css/custom.css
+
+plugins:
+  # This list REPLACES Sarde's defaults rather than extending them, so every
+  # default plugin has to be restated. Dropping one silently disables it.
+  enabled:
+    - search
+    - seo
+    - sitemap
+    - robots
+    - rss
+    - atom
+    - content_lint
+    - link_validator
+    - redirects
+    - llms_txt
+    - katex
+    - mermaid
+    - social_cards
+    - scroll-to-top
+    - keyboard-nav
+  config:
+    scroll-to-top:
+      showProgressRing: true
+      showTooltip: true
+    keyboard-nav:
+      # Keep arrow-key navigation, drop the on-load hint toast and the
+      # chevron arrows pinned to the viewport edges.
+      show_hint: false
+      show_side_nav: true
+
+homepage:
+  hero:
+    title: "Nuri"
+    subtitle: "A pure Go port of Shiki. TextMate grammars, VS Code themes, and byte-identical output without CGO."
+    background: gradient
+    cta:
+      label: "Get Started"
+      url: "/docs/getting-started"
+    secondary_cta:
+      label: "Read the Docs"
+      url: "/docs/introduction"
+    image:
+      light: /images/nuri.svg
+      dark: /images/nuri.svg
+      alt: "Nuri"

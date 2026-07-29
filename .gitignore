@@ -1,14 +1,21 @@
 my-docs/
 poc/
 official-docs/
-docs/
 docs-almost/
+
+# docs/ holds the documentation site source and is deployed by
+# .github/workflows/deploy-docs.yml, so it must stay tracked.
+# docs/.gitignore excludes the build output (dist/, .cache/).
 
 *.png
 *.txt
 *.svg
-!nuri.svg
 !example-output.svg
+# brand/ holds the master brand assets, so exports there stay tracked.
+!brand/**/*.svg
+!brand/**/*.png
+# Site assets are content, not build artifacts, so they override *.svg above.
+!docs/**/*.svg
 *.log
 
 *-output.md
