@@ -11,6 +11,13 @@
   <img src="https://img.shields.io/badge/Go-%E2%89%A51.25-007d9c" alt="Go Version">
 </p>
 
+<p align="center">
+  <a href="https://frostybee.github.io/nuri/">Documentation</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/frostybee/nuri/releases">Releases</a> ·
+  <a href="https://pkg.go.dev/github.com/frostybee/nuri">API reference</a>
+</p>
+
 ## Table of Contents
 
 - [Why native Go?](#why-native-go)
@@ -458,6 +465,17 @@ go run ./tools/devtool notices    # regenerate THIRD-PARTY-NOTICE only
 go run ./tools/devtool verify     # check lockfile against working tree (used in CI)
 ```
 
+### Rebuilding the Oniguruma WASM binary
+
+`resources/wasm/onig.wasm` is committed to the repository, so building it is not part of the normal workflow. If you need to update the Oniguruma version, change the C scanner wrapper, or reproduce the binary from source, the Docker-based build lives in [`wasm-build/`](wasm-build/README.md):
+
+```bash
+cd wasm-build && ./build.sh    # requires Docker; copies onig.wasm into resources/wasm/
+go run ./tools/devtool lock    # re-pin the SHA256 in provenance.lock.json
+```
+
+See [`wasm-build/README.md`](wasm-build/README.md) for the pinned versions, the exported WASM ABI, and the post-rebuild checklist.
+
 ### Tools
 
 None of these are part of the module or linked into any binary.
@@ -501,4 +519,4 @@ Nuri embeds third-party components (Oniguruma WASM binary, TextMate grammars, VS
 
 ---
 
-Full API documentation: [pkg.go.dev/github.com/frostybee/nuri](https://pkg.go.dev/github.com/frostybee/nuri)
+Guides and reference: [frostybee.github.io/nuri](https://frostybee.github.io/nuri/) · Full API documentation: [pkg.go.dev/github.com/frostybee/nuri](https://pkg.go.dev/github.com/frostybee/nuri)
