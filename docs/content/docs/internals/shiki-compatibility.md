@@ -125,6 +125,6 @@ Three upstream repositories define Nuri's behavior. All three are pinned in `pro
 
 **shikijs/textmate-grammars-themes** provides all 257 grammars and 65 themes. Per-file SHA-256 hashes in the provenance lockfile verify that the working tree matches the pinned version.
 
-**onig.wasm** is the Oniguruma C library compiled to WebAssembly (~400KB). Its SHA-256 is pinned in the provenance lockfile. This is the same binary Shiki uses, giving bug-for-bug regex compatibility.
+**onig.wasm** is the Oniguruma C library compiled to WebAssembly (~470KB). Its SHA-256 is pinned in the provenance lockfile. This is the same binary Shiki uses, giving bug-for-bug regex compatibility.
 
 The lockfile ensures that a `go test` run and a Node.js Shiki run use exactly the same grammars, themes, and regex engine. See [Fidelity Testing](/docs/internals/fidelity-testing) for how the lockfile is verified in CI.

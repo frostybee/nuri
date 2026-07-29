@@ -15,6 +15,7 @@ listed below.
 | `nuri-logo.svg` | no copy needed | `README.md` header image, referenced here directly |
 | `nuri-logo.svg` | `docs/public/images/nuri.svg` | Docs site homepage hero, via `homepage.hero.image` in `docs/sarde.yaml` |
 | `nuri-favicon.svg` | `docs/public/favicon.svg` | Docs site favicon, via `site.favicon` in `docs/sarde.yaml` |
+| `nuri-favicon.svg` | `docs/public/favicon.svg` | Docs site header logo, via `site.logo` in `docs/sarde.yaml`. Same copy as the favicon, no second file. |
 
 `docs/public/images/hero-light.svg` and `hero-dark.svg` are not mastered here.
 They are unmodified Sarde scaffold placeholders, byte-identical to the ones every
@@ -73,6 +74,20 @@ Current favicon values:
 The bars are 4.4x the logo's line height and the stroke is 3.25x its width, so
 both still read at 16px. The corner radius grew because a tighter radius reads as
 a square once the tile is only 16 pixels across.
+
+## Why the header logo is the favicon art
+
+The docs header renders its logo at Sarde's `logo-height` token, 1.75rem or 28px
+by default. That is an 18x reduction of the 512-unit canvas, which puts the logo's
+code lines at 0.55px, its brush stroke at 0.44px, its angle brackets at 0.49px,
+and its fude handle at 0.98px. Sizing up is not a fix: the logo needs 160px and
+the header is 64px tall.
+
+The favicon art at 28px puts its bars at 2.4px and its stroke at 1.4px, so it
+holds. `site.logo` therefore points at `/favicon.svg`, the same copy the favicon
+uses. A dedicated header asset is only worth authoring if the header should carry
+more of the logo's character than four bars and a stroke, and that means new
+artwork tuned for roughly 24 to 40 pixels, not a rescale of either existing file.
 
 ## Raster exports
 

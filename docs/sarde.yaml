@@ -4,6 +4,11 @@ site:
   url: "https://frostybee.github.io"
   # Page paths are appended relative to the content dir, so this must end at docs/content.
   edit_url: "https://github.com/frostybee/nuri/edit/main/docs/content"
+  # The favicon art is the reduced variant of nuri.svg, drawn to stay legible at
+  # small sizes, so it doubles as the header logo. Its own dark rounded-square
+  # background means one image works in both themes. Alt is left empty because
+  # the site title beside it already names the link.
+  logo: "/favicon.svg"
   favicon: "/favicon.svg"
 build:
   base_path: /nuri/
