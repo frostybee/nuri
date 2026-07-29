@@ -1,9 +1,23 @@
 name: CI
 
+# Documentation only commits cannot change Go test results, so they skip this
+# workflow entirely. GitHub Actions does not support YAML anchors, so the two
+# ignore lists below are duplicated by necessity. Keep them in sync with each
+# other and with full-gate.yml.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "brand/**"
+      - ".github/workflows/deploy-docs.yml"
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "brand/**"
+      - ".github/workflows/deploy-docs.yml"
 
 jobs:
   test:

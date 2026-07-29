@@ -1,8 +1,16 @@
 name: Full Fidelity Gate
 
+# This gate regenerates the full fixture matrix through Node, which is the most
+# expensive run in the repo. Documentation only commits cannot shift token
+# output, so they skip it. Keep this list in sync with ci.yml.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "brand/**"
+      - ".github/workflows/deploy-docs.yml"
 
 jobs:
   full-fidelity:
