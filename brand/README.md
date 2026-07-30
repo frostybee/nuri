@@ -8,6 +8,38 @@ constant with no configuration hook.
 Copying is manual. After editing a master here, copy it to every destination
 listed below.
 
+## Social card masters
+
+Sarde's `social_cards` plugin brands generated Open Graph images with a corner mark and a
+large low-opacity watermark. It composites raster images only, so the SVG masters are
+rasterized offline with oksvg, which cannot handle several features of `nuri-logo.svg`.
+The `-src` files are flattened, oksvg-adapted copies of the logo that compensate for each:
+
+- clip paths are ignored by oksvg, so the top-half/bottom-half clipping is resolved by
+  hand: grey lines above the brush stroke, coloured lines below it, clipped-away
+  duplicates omitted
+- `rx` on `rect` is dropped, so the rounded tile and border are explicit paths and the
+  pill code lines are round-cap strokes
+- stroke widths do not scale, so the watermark file pre-multiplies every coordinate and
+  stroke width by 2 for a 1024 px raster
+- percent-based gradients are converted to explicit `userSpaceOnUse` coordinates
+- element opacities are pre-blended into flat colours against the `#1a1f35` tile (grey
+  lines `#3a4052`, angle brackets `#4e78a4`, fude detail tints)
+- the fude brush `translate + rotate` becomes an explicit `matrix`; in the watermark the
+  matrix also carries the doubled scale, which is safe because the brush interior uses
+  fills only
+
+Files:
+
+- `social-card-mark-src.svg`: flattened `nuri-logo.svg`, rasterized at 512 px
+- `social-card-mark.png`: the corner mark drawn on social cards
+- `social-card-watermark-2x.svg`: the bare logo (no tile or border) at 2x, rasterized at 1024 px
+- `social-card-watermark.png`: the card watermark. On the navy card background the grey
+  lines recede, leaving the highlighted lines, brush stroke, brackets, and fude
+
+Edit `nuri-logo.svg` first, mirror the change into both `-src` files, re-rasterize, and
+copy the PNGs to the destinations below.
+
 ## Files and their destinations
 
 | Master | Copy to | Used by |
@@ -16,6 +48,8 @@ listed below.
 | `nuri-logo.svg` | `docs/public/images/nuri.svg` | Docs site homepage hero, via `homepage.hero.image` in `docs/sarde.yaml` |
 | `nuri-favicon.svg` | `docs/public/favicon.svg` | Docs site favicon, via `site.favicon` in `docs/sarde.yaml` |
 | `nuri-favicon.svg` | `docs/public/favicon.svg` | Docs site header logo, via `site.logo` in `docs/sarde.yaml`. Same copy as the favicon, no second file. |
+| `social-card-mark.png` | `docs/public/images/nuri-mark.png` | Social card corner mark, via `social_cards.logo` in `docs/sarde.yaml` |
+| `social-card-watermark.png` | `docs/public/images/nuri-watermark.png` | Social card watermark, via `social_cards.watermark_image` in `docs/sarde.yaml` |
 
 `docs/public/images/hero-light.svg` and `hero-dark.svg` are not mastered here.
 They are unmodified Sarde scaffold placeholders, byte-identical to the ones every

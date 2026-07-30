@@ -81,6 +81,18 @@ plugins:
     - scroll-to-top
     - keyboard-nav
   config:
+    social_cards:
+      # Brand palette from nuri-logo.svg: panel navy background, brush-trail
+      # gradient red to purple for the accent strip. The PNGs are rasterized
+      # from the masters in brand/ (cards cannot use SVG directly); the
+      # watermark is the bare favicon variant, whose grey bars recede into
+      # the navy background leaving the highlighted lines and brush stroke.
+      bg_color: "#1a1f35"
+      accent_color: "#ff7b72"
+      accent_color_2: "#d2a8ff"
+      logo: "/images/nuri-mark.png"
+      watermark: true
+      watermark_image: "/images/nuri-watermark.png"
     scroll-to-top:
       showProgressRing: true
       showTooltip: true

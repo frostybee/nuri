@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Nuri social card watermark, rasterizer input</title>
+  <desc id="desc">The bare Nuri logo: social-card-mark-src.svg without the background tile
+  and border, every coordinate and stroke width multiplied by 2 for a 1024 px raster,
+  because the offline oksvg rasterizer does not scale stroke widths when scaling. The
+  fude brush matrix combines the doubled scale with the original 60 degree rotation; its
+  interior uses fills only, which the matrix scales correctly. Grey lines keep the
+  pre-blended colour, which assumes the navy card background. Edit nuri-logo.svg first,
+  then mirror the change here and in social-card-mark-src.svg.</desc>
+  <defs>
+    <linearGradient id="paintTrail" x1="60" y1="554" x2="980" y2="554" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7b72"/>
+      <stop offset="0.2" stop-color="#ffa657"/>
+      <stop offset="0.4" stop-color="#e3b341"/>
+      <stop offset="0.6" stop-color="#7ee787"/>
+      <stop offset="0.8" stop-color="#79c0ff"/>
+      <stop offset="1" stop-color="#d2a8ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Grey code lines above the brush stroke -->
+  <g stroke="#3a4052" stroke-width="20" stroke-linecap="round">
+    <path d="M170 210H330"/>
+    <path d="M370 210H450"/>
+    <path d="M210 262H470"/>
+    <path d="M510 262H630"/>
+    <path d="M210 314H310"/>
+    <path d="M350 314H550"/>
+    <path d="M250 366H390"/>
+    <path d="M430 366H490"/>
+    <path d="M210 418H530"/>
+    <path d="M170 470H270"/>
+    <path d="M310 470H490"/>
+    <path d="M210 522H430"/>
+  </g>
+
+  <!-- Coloured code lines below the brush stroke -->
+  <g stroke-width="20" stroke-linecap="round">
+    <path d="M170 590H290" stroke="#ff7b72"/>
+    <path d="M330 590H550" stroke="#7ee787"/>
+    <path d="M590 590H670" stroke="#79c0ff"/>
+    <path d="M210 642H290" stroke="#ffa657"/>
+    <path d="M330 642H490" stroke="#d2a8ff"/>
+    <path d="M530 642H670" stroke="#e3b341"/>
+    <path d="M210 694H410" stroke="#79c0ff"/>
+    <path d="M450 694H550" stroke="#ff7b72"/>
+    <path d="M250 746H390" stroke="#7ee787"/>
+    <path d="M430 746H510" stroke="#ffa657"/>
+    <path d="M170 798H270" stroke="#d2a8ff"/>
+    <path d="M310 798H470" stroke="#79c0ff"/>
+  </g>
+
+  <!-- Dividing brush stroke -->
+  <path d="M60 576 Q260 544 480 532 Q720 516 980 536" stroke="url(#paintTrail)" stroke-width="16" fill="none" stroke-linecap="round"/>
+
+  <!-- Angle brackets -->
+  <g stroke="#4e78a4" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M740 260 L696 320 L740 380"/>
+    <path d="M820 260 L864 320 L820 380"/>
+  </g>
+
+  <!-- Japanese brush (fude): doubled scale combined with the 60 degree rotation -->
+  <g transform="matrix(1 1.7320508 -1.7320508 1 680 740)">
+    <path d="M0 0 Q-16 30 -9 80 Q0 95 9 80 Q16 30 0 0 Z" fill="#f0e8dc"/>
+    <path d="M-6 18 Q0 68 6 18" fill="#faba7f"/>
+    <rect x="-12" y="-20" width="24" height="22" fill="#d4af5a"/>
+    <rect x="-12" y="-20" width="24" height="5" fill="#e0c06c"/>
+    <rect x="-9" y="-145" width="18" height="128" fill="#5a3d1a"/>
+    <rect x="-9" y="-145" width="18" height="26" fill="#795a2a"/>
+    <rect x="-10" y="-65" width="20" height="5" fill="#8b6b34"/>
+    <rect x="-10" y="-45" width="20" height="5" fill="#7f5f2d"/>
+  </g>
+</svg>

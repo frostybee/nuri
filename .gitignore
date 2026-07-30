@@ -16,6 +16,7 @@ docs-almost/
 !brand/**/*.png
 # Site assets are content, not build artifacts, so they override *.svg above.
 !docs/**/*.svg
+!docs/**/*.png
 *.log
 
 *-output.md

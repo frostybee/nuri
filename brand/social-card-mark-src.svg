@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Nuri social card mark, rasterizer input</title>
+  <desc id="desc">nuri-logo.svg flattened and adapted for the offline oksvg rasterizer.
+  The clip paths are resolved manually (grey lines sit above the brush stroke, coloured
+  lines below it, so the clipped-away duplicates are simply omitted), rounded rects are
+  explicit paths or round-cap strokes (oksvg drops rx), the gradient uses explicit
+  userSpaceOnUse coordinates, element opacities are pre-blended into flat colours, and
+  the fude brush rotation is an explicit matrix. Edit nuri-logo.svg first, then mirror
+  the change here.</desc>
+  <defs>
+    <linearGradient id="paintTrail" x1="30" y1="277" x2="490" y2="277" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7b72"/>
+      <stop offset="0.2" stop-color="#ffa657"/>
+      <stop offset="0.4" stop-color="#e3b341"/>
+      <stop offset="0.6" stop-color="#7ee787"/>
+      <stop offset="0.8" stop-color="#79c0ff"/>
+      <stop offset="1" stop-color="#d2a8ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background (rx 72) and inner border (rx 70) -->
+  <path d="M88 16h336a72 72 0 0 1 72 72v336a72 72 0 0 1-72 72H88a72 72 0 0 1-72-72V88a72 72 0 0 1 72-72z" fill="#1a1f35"/>
+  <path d="M90 20h332a70 70 0 0 1 70 70v332a70 70 0 0 1-70 70H90a70 70 0 0 1-70-70V90a70 70 0 0 1 70-70z" fill="none" stroke="#2a3050" stroke-width="1"/>
+
+  <!-- Grey code lines above the brush stroke: #8b949e at 28% over #1a1f35 -->
+  <g stroke="#3a4052" stroke-width="10" stroke-linecap="round">
+    <path d="M85 105H165"/>
+    <path d="M185 105H225"/>
+    <path d="M105 131H235"/>
+    <path d="M255 131H315"/>
+    <path d="M105 157H155"/>
+    <path d="M175 157H275"/>
+    <path d="M125 183H195"/>
+    <path d="M215 183H245"/>
+    <path d="M105 209H265"/>
+    <path d="M85 235H135"/>
+    <path d="M155 235H245"/>
+    <path d="M105 261H215"/>
+  </g>
+
+  <!-- Coloured code lines below the brush stroke -->
+  <g stroke-width="10" stroke-linecap="round">
+    <path d="M85 295H145" stroke="#ff7b72"/>
+    <path d="M165 295H275" stroke="#7ee787"/>
+    <path d="M295 295H335" stroke="#79c0ff"/>
+    <path d="M105 321H145" stroke="#ffa657"/>
+    <path d="M165 321H245" stroke="#d2a8ff"/>
+    <path d="M265 321H335" stroke="#e3b341"/>
+    <path d="M105 347H205" stroke="#79c0ff"/>
+    <path d="M225 347H275" stroke="#ff7b72"/>
+    <path d="M125 373H195" stroke="#7ee787"/>
+    <path d="M215 373H255" stroke="#ffa657"/>
+    <path d="M85 399H135" stroke="#d2a8ff"/>
+    <path d="M155 399H235" stroke="#79c0ff"/>
+  </g>
+
+  <!-- Dividing brush stroke -->
+  <path d="M30 288 Q130 272 240 266 Q360 258 490 268" stroke="url(#paintTrail)" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- Angle brackets: #79c0ff at 55% over #1a1f35 -->
+  <g stroke="#4e78a4" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M370 130 L348 160 L370 190"/>
+    <path d="M410 130 L432 160 L410 190"/>
+  </g>
+
+  <!-- Japanese brush (fude), rotate(60) around the translated origin as a matrix -->
+  <g transform="matrix(0.5 0.8660254 -0.8660254 0.5 340 370)">
+    <path d="M0 0 Q-16 30 -9 80 Q0 95 9 80 Q16 30 0 0 Z" fill="#f0e8dc"/>
+    <path d="M-6 18 Q0 68 6 18" fill="#faba7f"/>
+    <rect x="-12" y="-20" width="24" height="22" fill="#d4af5a"/>
+    <rect x="-12" y="-20" width="24" height="5" fill="#e0c06c"/>
+    <rect x="-9" y="-145" width="18" height="128" fill="#5a3d1a"/>
+    <rect x="-9" y="-145" width="18" height="26" fill="#795a2a"/>
+    <rect x="-10" y="-65" width="20" height="5" fill="#8b6b34"/>
+    <rect x="-10" y="-45" width="20" height="5" fill="#7f5f2d"/>
+  </g>
+</svg>
