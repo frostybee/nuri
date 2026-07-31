@@ -1,5 +1,6 @@
 ---
 title: Welcome
+description: "Shiki-fidelity syntax highlighting for Go. 257 languages, 65 VS Code themes, and HTML, ANSI, SVG, and JSON output, with no CGO."
 ---
 
 :::card-grid
