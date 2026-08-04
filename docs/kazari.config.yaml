@@ -1,0 +1,106 @@
+# Kazari Configuration - All Features Enabled
+
+# Syntax highlighting themes
+themes:
+  light: github-light
+  dark: github-dark-default
+
+# Dark mode strategy
+darkMode:
+  kind: selector
+  selector: '[data-theme="dark"]'
+
+# Toolbar buttons
+copyButton: true
+fullscreenButton: true
+wrapButton: true
+themeToggleButton: true
+languageBadge: true
+languageIconMode: iconAndText
+fileIcons: true
+
+# Output panel
+outputPanel: true
+outputDefaultCollapsed: false
+
+# Code block rendering
+lineNumbers: true
+frameDetection: true
+fileNameExtraction: true
+mermaidPassThrough: true
+links: true
+themedScrollbars: true
+themedSelection: true
+contentExclusion: true
+terminalCommentStripping: true
+terminalDotStyle: colored
+dataLineCount: true
+
+# Output quality
+tabWidth: 2
+minContrast: 5.5
+minify: true
+styleReset: true
+cascadeLayer: kazari
+themeCSSRoot: ":root"
+locale: en-US
+
+# Block defaults
+defaults:
+  wrap: true
+  preserveIndent: true
+  hangingIndent: 0
+  lineNumbers: true
+  frame: auto
+
+# Per-language defaults
+languageDefaults:
+  "bash,sh,zsh,shell":
+    frame: terminal
+    lineNumbers: false
+  "console,powershell":
+    frame: terminal
+    lineNumbers: false
+
+# Language aliases
+languageAliases:
+  ts: typescript
+  js: javascript
+  py: python
+  rb: ruby
+  rs: rust
+  yml: yaml
+  md: markdown
+  sh: bash
+  dockerfile: docker
+
+# Collapsible blocks
+collapsible:
+  lineThreshold: 15
+  previewLines: 5
+  defaultCollapsed: true
+  preserveIndent: true
+  style: github
+
+# UI string overrides
+uiStrings:
+  copy.label: Copy
+  copy.title: Copy to clipboard
+  copy.success: Copied!
+  fullscreen.label: Fullscreen
+  fullscreen.hint: Press Esc to exit fullscreen
+  fullscreen.font.increase: Increase font size
+  fullscreen.font.decrease: Decrease font size
+  fullscreen.font.reset: Double-click to reset
+  wrap.enable: Enable word wrap
+  wrap.disable: Disable word wrap
+  collapse.expand: Show more
+  collapse.collapse: Show less
+  collapse.expanded: Code block expanded
+  collapse.collapsed: Code block collapsed
+  collapse.summary.singular: 1 collapsed line
+  collapse.summary.plural: "%d collapsed lines"
+  codegroup.fallback: Code
+  terminal.label: Terminal window
+  theme.toggle: Toggle theme
+  theme.toggle.announcement: Theme toggled

@@ -78,8 +78,10 @@ plugins:
     - katex
     - mermaid
     - social_cards
-    - scroll-to-top
-    - keyboard-nav
+    - scroll_to_top
+    - reading_progress
+    - keyboard_nav
+    - telescope
   config:
     social_cards:
       # Brand palette from nuri-logo.svg: panel navy background, brush-trail
@@ -93,14 +95,17 @@ plugins:
       logo: "/images/nuri-mark.png"
       watermark: true
       watermark_image: "/images/nuri-watermark.png"
-    scroll-to-top:
-      showProgressRing: true
-      showTooltip: true
-    keyboard-nav:
+    scroll_to_top:
+      show_progress_ring: true
+      show_tooltip: true
+    keyboard_nav:
       # Keep arrow-key navigation, drop the on-load hint toast and the
       # chevron arrows pinned to the viewport edges.
       show_hint: false
       show_side_nav: true
+    reading_progress:
+      bar_height: 3.5
+      bar_color: "#9122f9"           
 
 homepage:
   hero:
@@ -109,10 +114,12 @@ homepage:
     background: gradient
     cta:
       label: "Get Started"
-      url: "/docs/getting-started"
-    secondary_cta:
-      label: "Read the Docs"
       url: "/docs/introduction"
+      icon: rocket
+    secondary_cta:
+      label: "Star on GitHub"
+      url: "https://github.com/frostybee/nuri"
+      icon: star
     image:
       light: /images/nuri.svg
       dark: /images/nuri.svg
